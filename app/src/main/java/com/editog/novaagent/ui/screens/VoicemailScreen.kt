@@ -11,8 +11,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.res.painterResource
+import com.editog.novaagent.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -97,7 +97,7 @@ fun VoicemailScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.PhoneCallback,
+                    painter = painterResource(R.drawable.ic_voicemail),
                     contentDescription = null,
                     tint = primaryColor,
                     modifier = Modifier.size(24.dp)
@@ -214,7 +214,7 @@ fun VoicemailCard(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.DeleteOutline,
+                        painter = painterResource(R.drawable.ic_delete_chat),
                         contentDescription = "Delete Voicemail",
                         tint = Color(0xFFFF5555),
                         modifier = Modifier.size(20.dp)
@@ -255,7 +255,7 @@ fun VoicemailCard(
                         .background(if (item.isPlaying) Color(0xFFFF0055) else primaryColor)
                 ) {
                     Icon(
-                        imageVector = if (item.isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                        painter = painterResource(if (item.isPlaying) R.drawable.ic_stop else R.drawable.ic_play),
                         contentDescription = if (item.isPlaying) "Stop Listening" else "Listen",
                         tint = Color.Black
                     )

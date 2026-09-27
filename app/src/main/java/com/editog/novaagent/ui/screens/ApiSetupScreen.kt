@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.res.painterResource
+import com.editog.novaagent.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -170,7 +170,7 @@ fun ApiSetupScreen(
                         trailingIcon = {
                             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                                 Icon(
-                                    imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    painter = painterResource(if (isPasswordVisible) R.drawable.ic_visibility_off else R.drawable.ic_visibility),
                                     contentDescription = "Toggle Visibility",
                                     tint = Color.White
                                 )

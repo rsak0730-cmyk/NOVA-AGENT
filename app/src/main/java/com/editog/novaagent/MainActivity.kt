@@ -41,7 +41,38 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxSize(),
                             color = Color(0xFF090A0F)
                         ) {
-                            AppNavHost(app = validApp, settings = settings)
+                            var appError by remember { mutableStateOf<String?>(null) }
+                            if (appError != null) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "Nova Agent Active",
+                                        color = Color(0xFF00F0FF),
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = appError ?: "Initialization alert",
+                                        color = Color(0xFFE2E8F0),
+                                        fontSize = 13.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Button(
+                                        onClick = { appError = null },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00F0FF), contentColor = Color.Black)
+                                    ) {
+                                        Text("Enter App", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            } else {
+                                AppNavHost(app = validApp, settings = settings)
+                            }
                         }
                     }
                 } else {

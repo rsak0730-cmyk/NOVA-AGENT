@@ -1,21 +1,17 @@
 package com.editog.novaagent.ui.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Voicemail
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.annotation.DrawableRes
+import com.editog.novaagent.R
 
 sealed class BottomNavItem(
     val route: String,
     val title: String,
-    val icon: ImageVector
+    @DrawableRes val iconResId: Int
 ) {
-    object Chat : BottomNavItem("chat", "Chat", Icons.Default.Chat)
-    object ApiSetup : BottomNavItem("api_setup", "API Setup", Icons.Default.Key)
-    object Voicemail : BottomNavItem("voicemail", "Voicemail", Icons.Default.Voicemail)
-    object Settings : BottomNavItem("settings", "Settings", Icons.Default.Settings)
+    object Chat : BottomNavItem("chat", "Chat", R.drawable.ic_nav_chat)
+    object ApiSetup : BottomNavItem("api_setup", "API Setup", R.drawable.ic_nav_key)
+    object Voicemail : BottomNavItem("voicemail", "Voicemail", R.drawable.ic_voicemail)
+    object Settings : BottomNavItem("settings", "Settings", R.drawable.ic_nav_settings)
 
     companion object {
         val items = listOf(Chat, ApiSetup, Voicemail, Settings)

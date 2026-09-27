@@ -17,8 +17,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.res.painterResource
+import com.editog.novaagent.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -250,7 +250,7 @@ fun ChatScreen(
                         .padding(horizontal = 6.dp, vertical = 4.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AutoAwesome,
+                        painter = painterResource(R.drawable.ic_island_sparkle),
                         contentDescription = "Nova AI",
                         tint = primaryColor,
                         modifier = Modifier.size(22.dp)
@@ -283,7 +283,7 @@ fun ChatScreen(
                         .border(1.dp, Color(0x66FF4444), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.DeleteSweep,
+                        painter = painterResource(R.drawable.ic_delete_chat),
                         contentDescription = "Delete Full Chat",
                         tint = Color(0xFFFF5555),
                         modifier = Modifier.size(20.dp)
@@ -390,7 +390,7 @@ fun ChatScreen(
                             .border(1.dp, if (isListening) Color(0xFFFF0055) else primaryColor, CircleShape)
                     ) {
                         Icon(
-                            imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
+                            painter = painterResource(if (isListening) R.drawable.ic_mic_off else R.drawable.ic_mic),
                             contentDescription = "Voice Command",
                             tint = if (isListening) Color.White else primaryColor
                         )
@@ -408,7 +408,7 @@ fun ChatScreen(
                             .background(if (textInput.isNotBlank()) primaryColor else Color(0xFF232736))
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Send,
+                            painter = painterResource(R.drawable.ic_send),
                             contentDescription = "Send",
                             tint = if (textInput.isNotBlank()) Color.Black else Color(0xFF6B7280)
                         )

@@ -5,8 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,9 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editog.novaagent.R
 import com.editog.novaagent.data.model.AppSettings
 
 @Composable
@@ -56,7 +56,7 @@ fun DynamicIslandPreview(
             horizontalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.AutoAwesome,
+                painter = painterResource(R.drawable.ic_island_sparkle),
                 contentDescription = "AI Active",
                 tint = Color(settings.themeColor.primaryHex),
                 modifier = Modifier.size(20.dp)

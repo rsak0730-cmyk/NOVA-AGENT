@@ -237,7 +237,7 @@ fun SettingsScreen(
                         ) {
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Default.CheckCircle,
+                                    imageVector = Icons.Default.Check,
                                     contentDescription = null,
                                     tint = if (tColor == ThemeColor.NEON_WHITE || tColor == ThemeColor.NEON_YELLOW) Color.Black else Color.White,
                                     modifier = Modifier.size(18.dp)
@@ -365,7 +365,7 @@ fun SettingsScreen(
                             )
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Default.CheckCircle,
+                                    imageVector = Icons.Default.Check,
                                     contentDescription = null,
                                     tint = primaryColor,
                                     modifier = Modifier.size(18.dp)
