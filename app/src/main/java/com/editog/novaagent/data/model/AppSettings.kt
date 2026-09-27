@@ -15,6 +15,20 @@ enum class ThemeColor(val displayName: String, val primaryHex: Long, val accentH
 }
 
 @Serializable
+enum class AppTextureStyle(val displayName: String, val description: String) {
+    CARBON_FIBER("Carbon Fiber [3D Weave]", "Aerospace diagonal twill-weave carbon texture"),
+    BRUSHED_TITANIUM("Brushed Titanium", "Anisotropic metallic brushed grain with specular glint"),
+    HEXAGON_CYBER_MESH("Hexagon Cyber Mesh", "Honeycomb nano-mesh with glowing node intersections"),
+    CIRCUIT_BOARD("Circuit Board [Cyber PCB]", "High-tech motherboard micro-traces and glowing vias"),
+    PERFORATED_LEATHER("Perforated Leather", "Luxury perforated automotive leather with matte depth"),
+    OBSIDIAN_GRANITE("Obsidian Dark Granite", "Textured volcanic stone with mineral grain flecks"),
+    BLUEPRINT_GRID("Blueprint Technical Grid", "Isometric engineering coordinate grid with crosshairs"),
+    COSMOS_STARDUST("Cosmos Stardust", "Deep galaxy field with micro stellar dust particles"),
+    FROSTED_GLASS_GRAIN("Frosted Smoked Glass", "Tactile frosted glass noise with diffused refraction"),
+    NONE("Pure OLED Dark", "Minimal clean pitch dark background")
+}
+
+@Serializable
 enum class UiDesignStyle(val displayName: String) {
     SOFT_UI("Soft UI"),
     BRUTALISM("Brutalism / Neobrutalism"),
@@ -58,6 +72,7 @@ enum class TextAnimationStyle(val displayName: String) {
 @Serializable
 data class AppSettings(
     val themeColor: ThemeColor = ThemeColor.NEON_BLUE,
+    val textureStyle: AppTextureStyle = AppTextureStyle.CARBON_FIBER,
     val uiDesign: UiDesignStyle = UiDesignStyle.CYBERPUNK_UI,
     val textAnimationStyle: TextAnimationStyle = TextAnimationStyle.SOLID,
     val customGlowColorHex: Long = 0xFF00F0FF,

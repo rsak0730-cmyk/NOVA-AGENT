@@ -64,7 +64,7 @@ fun VoicemailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF090A0F))
+            
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         // Top Header

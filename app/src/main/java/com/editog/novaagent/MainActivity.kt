@@ -20,6 +20,7 @@ import com.editog.novaagent.service.DynamicIslandService
 import com.editog.novaagent.ui.CrashReportActivity
 import com.editog.novaagent.ui.navigation.AppNavHost
 import com.editog.novaagent.ui.theme.NovaAgentTheme
+import com.editog.novaagent.ui.theme.TexturedBackground
 
 class MainActivity : ComponentActivity() {
 
@@ -38,13 +39,19 @@ class MainActivity : ComponentActivity() {
 
                 if (app != null) {
                     val settings by app.settingsRepository.settings.collectAsState()
+                    val primaryColor = Color(settings.themeColor.primaryHex)
 
                     NovaAgentTheme(themeColor = settings.themeColor) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = Color(0xFF090A0F)
                         ) {
-                            AppNavHost(app = app, settings = settings)
+                            TexturedBackground(
+                                texture = settings.textureStyle,
+                                primaryColor = primaryColor
+                            ) {
+                                AppNavHost(app = app, settings = settings)
+                            }
                         }
                     }
                 } else {

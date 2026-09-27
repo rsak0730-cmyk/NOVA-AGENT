@@ -62,7 +62,7 @@ fun ApiSetupScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF090A0F))
+            
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {

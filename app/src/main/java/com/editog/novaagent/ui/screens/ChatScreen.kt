@@ -92,7 +92,7 @@ fun ChatScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF090A0F))
+            
     ) {
         Column(
             modifier = Modifier

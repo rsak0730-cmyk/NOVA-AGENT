@@ -32,6 +32,7 @@ import com.editog.novaagent.service.DynamicIslandService
 import com.editog.novaagent.ui.components.DynamicIslandPreview
 import com.editog.novaagent.ui.components.StyledText
 import com.editog.novaagent.ui.theme.applyUiStyle
+import com.editog.novaagent.ui.theme.TexturePreviewBox
 
 @Composable
 fun SettingsScreen(
@@ -47,7 +48,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF090A0F))
+            
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -301,6 +302,147 @@ fun SettingsScreen(
             }
         }
 
+        // Section 2: Real Textured Theme
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .applyUiStyle(currentSettings.uiDesign, primaryColor)
+                .padding(16.dp)
+        ) {
+            Column {
+                Text(
+                    text = "2. Real Textured Theme",
+                    color = primaryColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "Procedural tactile physical textures rendered live across entire app:",
+                    color = Color(0xFF9CA3AF),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                // Current Active Texture Live Interactive Card
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(84.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.5.dp, primaryColor, RoundedCornerShape(12.dp))
+                ) {
+                    TexturePreviewBox(
+                        texture = currentSettings.textureStyle,
+                        primaryColor = primaryColor,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0x55000000))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    color = primaryColor,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "ACTIVE TEXTURE",
+                                        color = Color.Black,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = currentSettings.textureStyle.displayName,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = currentSettings.textureStyle.description,
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 11.5.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // List of All 10 Real Textured Themes
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AppTextureStyle.values().forEach { texture ->
+                        val isSelected = currentSettings.textureStyle == texture
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) primaryColor.copy(alpha = 0.18f) else Color(0x99131622))
+                                .border(
+                                    1.dp,
+                                    if (isSelected) primaryColor else Color(0x22FFFFFF),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable {
+                                    app.settingsRepository.updateSettings(currentSettings.copy(textureStyle = texture))
+                                    DynamicIslandService.postAction("Texture: ${texture.displayName.take(18)}")
+                                }
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Mini Live Texture Swatch
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, if (isSelected) primaryColor else Color(0x33FFFFFF), RoundedCornerShape(8.dp))
+                            ) {
+                                TexturePreviewBox(
+                                    texture = texture,
+                                    primaryColor = primaryColor,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = texture.displayName,
+                                    color = if (isSelected) primaryColor else Color.White,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                    fontSize = 13.5.sp
+                                )
+                                Text(
+                                    text = texture.description,
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 11.sp,
+                                    maxLines = 1
+                                )
+                            }
+
+                            if (isSelected) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_check),
+                                    contentDescription = null,
+                                    tint = primaryColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Section 3: UI Design Switcher (23 styles)
         Box(
             modifier = Modifier
@@ -375,7 +517,7 @@ fun SettingsScreen(
         ) {
             Column {
                 Text(
-                    text = "3. Text Color / Animation",
+                    text = "4. Text Color / Animation",
                     color = primaryColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
@@ -438,7 +580,7 @@ fun SettingsScreen(
         ) {
             Column {
                 Text(
-                    text = "4. Dynamic Island Settings",
+                    text = "5. Dynamic Island Settings",
                     color = primaryColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp

@@ -1,6 +1,5 @@
 package com.editog.novaagent.ui.navigation
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,7 +44,7 @@ fun AppNavHost(
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = Color(0xFF0C0E16),
+                containerColor = Color(0xF20B0E17),
                 contentColor = Color.White
             ) {
                 // Tab 1: Chat
@@ -145,7 +144,7 @@ fun AppNavHost(
                 )
             }
         },
-        containerColor = Color(0xFF090A0F)
+        containerColor = Color.Transparent
     ) { innerPadding ->
         NavHost(
             navController = navController,
