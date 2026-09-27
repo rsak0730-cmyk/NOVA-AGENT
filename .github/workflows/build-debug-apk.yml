@@ -54,32 +54,28 @@ jobs:
       - name: Prepare Direct APK for Release
         run: |
           mkdir -p release-apk
-          find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} release-apk/NovaAgent-v2.0.4.apk \;
+          find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} release-apk/NovaAgent-v2.0.5.apk \;
 
       - name: Create or Update GitHub Release with Direct APK
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v2.0.4
-          name: "Nova Agent v2.0.4 - Direct APK Download"
+          tag_name: v2.0.5
+          name: "Nova Agent v2.0.5 - Direct APK Download"
           body: |
-            ### 🚀 Nova Agent v2.0.4 (Direct Install APK)
+            ### 🚀 Nova Agent v2.0.5 (Direct Install APK)
             **Direct APK Download (No unzipping required)**
-            Download `NovaAgent-v2.0.4.apk` below directly to your device and tap it to install.
+            Download `NovaAgent-v2.0.5.apk` below directly to your device and tap it to install.
             
-            #### What's Fixed & Upgraded in v2.0.4:
-            - **Fixed Dynamic Island Tap (100% Reliable Toggle)**: Tapping the Dynamic Island pill now reliably toggles voice listening without accidental drag interference. Zero app switching; you stay on your active screen while talking to Jarvis.
-            - **Microphone Foreground Service Permissions**: Declared `FOREGROUND_SERVICE_MICROPHONE` and `RecognizerIntent.EXTRA_CALLING_PACKAGE` so speech recognition works reliably from overlays and when in background apps on Android 14/15.
-            - **Fixed Volume Up Hardware Key Interception**: Added programmatic `FLAG_REQUEST_FILTER_KEY_EVENTS` in `onServiceConnected` and prominent Accessibility status banners so pressing Volume Up anywhere reliably triggers voice listening.
-            - **Real-Time Active Screen Actions**:
-              - Scrolling: *"Scroll down"*, *"Next video"*, *"Next reel"*, *"Next short"*, *"Scroll up"*.
-              - Media: *"Play"*, *"Pause"*, *"Resume"*.
-              - Clicking: *"Click [button]"*, *"Tap [text]"* with recursive coordinate gesture tapping.
-              - Typing: *"Type [text]"*, *"Search for [text]"* into active inputs.
-              - Inspection: *"What is on my screen"*, *"Explain this screen"* with live Watchdog.
-              - App launching & dialing: *"Open YouTube"*, *"Call [contact]"*.
+            #### What's Fixed & Upgraded in v2.0.5:
+            - **Chat Box Moves Dynamically with User Keyboard**: The typing box (text input field, voice microphone button, and send button) now smoothly glides up directly on top of the virtual keyboard when typing. You can always see what you are writing without the keyboard obscuring it.
+            - **Zero Keyboard-Chat Gap**: Mathematically exact inset padding guarantees flush placement on top of the keyboard when open and sits cleanly atop the navigation bar when closed.
+            - **Auto-Scroll on Keyboard Open**: Conversation messages automatically scroll up to keep the latest message visible right above the elevated typing box.
+            - **Fixed Dynamic Island Tap (100% Reliable Toggle)**: Tapping the Dynamic Island pill reliably toggles voice listening without app switching; you stay on your active screen while talking to Jarvis.
+            - **Volume Up Hardware Key Interception**: Pressing Volume Up anywhere reliably triggers voice listening via accessibility service.
+            - **Real-Time Active Screen Actions**: Complete active screen control (scrolling, clicking, media play/pause, typing, screen inspection).
             - **Universal Shimmer Text**: All 10 text animation styles feature animated continuous shimmer across all chat messages and screen elements.
-            - **Full Voicemail Profile**: Configure user name, mobile SIM number, custom spoken greeting, ring delay slider, guardian toggle, and screening mode.
-          files: release-apk/NovaAgent-v2.0.4.apk
+            - **Full Voicemail Profile**: Configure user name, mobile SIM number, custom spoken greeting, ring delay slider, and voicemail screening.
+          files: release-apk/NovaAgent-v2.0.5.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

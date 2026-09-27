@@ -1,8 +1,6 @@
 package com.editog.novaagent.ui.navigation
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -151,19 +149,41 @@ fun AppNavHost(
             startDestination = "chat",
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
             composable("chat") {
-                ChatScreen(app = app, settings = settings)
+                ChatScreen(
+                    app = app,
+                    settings = settings,
+                    bottomBarHeight = innerPadding.calculateBottomPadding()
+                )
             }
             composable("api_setup") {
-                ApiSetupScreen(app = app, settings = settings)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = innerPadding.calculateBottomPadding())
+                ) {
+                    ApiSetupScreen(app = app, settings = settings)
+                }
             }
             composable("voicemail") {
-                VoicemailScreen(app = app, settings = settings)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = innerPadding.calculateBottomPadding())
+                ) {
+                    VoicemailScreen(app = app, settings = settings)
+                }
             }
             composable("settings") {
-                SettingsScreen(app = app, currentSettings = settings)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = innerPadding.calculateBottomPadding())
+                ) {
+                    SettingsScreen(app = app, currentSettings = settings)
+                }
             }
         }
     }

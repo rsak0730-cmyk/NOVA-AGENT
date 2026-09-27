@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -42,7 +43,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatScreen(
     app: NovaApplication,
-    settings: AppSettings
+    settings: AppSettings,
+    bottomBarHeight: Dp = 0.dp
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -55,6 +57,10 @@ fun ChatScreen(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var activePendingAction by remember { mutableStateOf<ActionPendingConfirmation?>(null) }
     val primaryColor = Color(settings.themeColor.primaryHex)
+
+    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val isKeyboardOpen = imeBottom > 0.dp
+    val effectiveBottomPadding = if (imeBottom > bottomBarHeight) imeBottom else bottomBarHeight
 
     val hasOverlayPermission = remember(Unit) {
         Settings.canDrawOverlays(context)
@@ -77,6 +83,15 @@ fun ChatScreen(
         }
     }
 
+    // Scroll to bottom whenever keyboard opens to ensure input box and recent chats stay visible
+    LaunchedEffect(isKeyboardOpen) {
+        if (isKeyboardOpen && messages.isNotEmpty()) {
+            try {
+                listState.animateScrollToItem(messages.size - 1)
+            } catch (e: Throwable) {}
+        }
+    }
+
     fun sendMessage(userText: String) {
         if (userText.isBlank()) return
         val trimmed = userText.trim()
@@ -91,15 +106,12 @@ fun ChatScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .navigationBarsPadding()
-                .imePadding()
+                .padding(bottom = effectiveBottomPadding)
         ) {
             // Header Top Bar
             Row(
