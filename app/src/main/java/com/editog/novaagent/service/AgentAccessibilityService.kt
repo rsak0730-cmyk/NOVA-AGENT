@@ -1,9 +1,11 @@
 package com.editog.novaagent.service
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -29,13 +31,30 @@ class AgentAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         _isServiceActive.value = true
+
+        try {
+            val info = serviceInfo ?: AccessibilityServiceInfo()
+            info.eventTypes = AccessibilityEvent.TYPES_ALL_MASK
+            info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                         AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                         AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+            info.notificationTimeout = 100
+            serviceInfo = info
+        } catch (e: Throwable) {
+            Log.e("AgentAccessibility", "Error configuring serviceInfo", e)
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null) return
-        val pkg = event.packageName?.toString()
-        if (!pkg.isNullOrBlank()) {
-            _currentAppPackage.value = pkg
+        try {
+            if (event == null) return
+            val pkg = event.packageName?.toString()
+            if (!pkg.isNullOrBlank()) {
+                _currentAppPackage.value = pkg
+            }
+        } catch (e: Throwable) {
+            Log.e("AgentAccessibility", "Error handling accessibility event", e)
         }
     }
 
@@ -53,12 +72,15 @@ class AgentAccessibilityService : AccessibilityService() {
      * Intercepts Volume Up hardware key to toggle voice listening mode
      */
     override fun onKeyEvent(event: KeyEvent?): Boolean {
-        if (event != null && event.keyCode == KeyEvent.KEYCODE_VOLUME_UP && event.action == KeyEvent.ACTION_DOWN) {
-            // Trigger voice listening toggle via Application context
-            val app = application as? NovaApplication
-            app?.voiceManager?.toggleListening()
-            DynamicIslandService.postAction("Listening toggle (Vol+ key)")
-            return true // Consume key event
+        try {
+            if (event != null && event.keyCode == KeyEvent.KEYCODE_VOLUME_UP && event.action == KeyEvent.ACTION_DOWN) {
+                val app = (application as? NovaApplication) ?: NovaApplication.instance
+                app?.voiceManager?.toggleListening()
+                DynamicIslandService.postAction("Listening toggle (Vol+ key)")
+                return true // Consume key event
+            }
+        } catch (e: Throwable) {
+            Log.e("AgentAccessibility", "Error in onKeyEvent", e)
         }
         return super.onKeyEvent(event)
     }
@@ -67,149 +89,169 @@ class AgentAccessibilityService : AccessibilityService() {
      * Watchdog: Summarizes screen content for Gemini
      */
     fun inspectCurrentScreen(): String {
-        val rootNode = rootInActiveWindow ?: return "Screen content unavailable"
-        val stringBuilder = StringBuilder()
-        stringBuilder.append("Current App Package: ").append(rootNode.packageName ?: "Unknown").append("\n")
-        stringBuilder.append("Visible Elements:\n")
-        traverseNode(rootNode, stringBuilder, 0)
-        return stringBuilder.toString()
+        return try {
+            val rootNode = rootInActiveWindow ?: return "Screen content unavailable"
+            val stringBuilder = StringBuilder()
+            stringBuilder.append("Current App Package: ").append(rootNode.packageName ?: "Unknown").append("\n")
+            stringBuilder.append("Visible Elements:\n")
+            traverseNode(rootNode, stringBuilder, 0)
+            stringBuilder.toString()
+        } catch (e: Throwable) {
+            "Screen inspection error"
+        }
     }
 
     private fun traverseNode(node: AccessibilityNodeInfo, builder: StringBuilder, depth: Int) {
         if (depth > 8) return
-        val text = node.text?.toString()?.trim()
-        val desc = node.contentDescription?.toString()?.trim()
-        val viewId = node.viewIdResourceName
+        try {
+            val text = node.text?.toString()?.trim()
+            val desc = node.contentDescription?.toString()?.trim()
+            val viewId = node.viewIdResourceName
 
-        if (!text.isNullOrBlank() || !desc.isNullOrBlank()) {
-            builder.append("  ".repeat(depth))
-            if (!text.isNullOrBlank()) builder.append("Text: \"$text\" ")
-            if (!desc.isNullOrBlank()) builder.append("Desc: \"$desc\" ")
-            if (node.isClickable) builder.append("[Clickable] ")
-            if (node.isEditable) builder.append("[Editable] ")
-            if (!viewId.isNullOrBlank()) builder.append("Id: $viewId")
-            builder.append("\n")
-        }
+            if (!text.isNullOrBlank() || !desc.isNullOrBlank()) {
+                builder.append("  ".repeat(depth))
+                if (!text.isNullOrBlank()) builder.append("Text: \"$text\" ")
+                if (!desc.isNullOrBlank()) builder.append("Desc: \"$desc\" ")
+                if (node.isClickable) builder.append("[Clickable] ")
+                if (node.isEditable) builder.append("[Editable] ")
+                if (!viewId.isNullOrBlank()) builder.append("Id: $viewId")
+                builder.append("\n")
+            }
 
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            traverseNode(child, builder, depth + 1)
-            child.recycle()
-        }
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i) ?: continue
+                traverseNode(child, builder, depth + 1)
+                child.recycle()
+            }
+        } catch (e: Throwable) {}
     }
 
     /**
      * Performs click on an element matching text or ID
      */
     fun clickElement(targetTextOrId: String): Boolean {
-        val root = rootInActiveWindow ?: return false
-        val nodes = root.findAccessibilityNodeInfosByText(targetTextOrId)
-        for (node in nodes) {
-            if (node.isClickable) {
-                val clicked = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                if (clicked) return true
-            }
-            // Try parent if clickable
-            var parent = node.parent
-            while (parent != null) {
-                if (parent.isClickable) {
-                    val clicked = parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        return try {
+            val root = rootInActiveWindow ?: return false
+            val nodes = root.findAccessibilityNodeInfosByText(targetTextOrId)
+            for (node in nodes) {
+                if (node.isClickable) {
+                    val clicked = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                     if (clicked) return true
                 }
-                parent = parent.parent
+                var parent = node.parent
+                while (parent != null) {
+                    if (parent.isClickable) {
+                        val clicked = parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                        if (clicked) return true
+                    }
+                    parent = parent.parent
+                }
             }
+            false
+        } catch (e: Throwable) {
+            false
         }
-        return false
     }
 
     /**
      * Types text into target input field (search box, chat box)
      */
     fun typeTextIntoInput(targetHint: String, textToType: String): Boolean {
-        val root = rootInActiveWindow ?: return false
-        val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        if (focused != null && focused.isEditable) {
-            val args = Bundle()
-            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, textToType)
-            return focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        return try {
+            val root = rootInActiveWindow ?: return false
+            val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            if (focused != null && focused.isEditable) {
+                val args = Bundle()
+                args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, textToType)
+                return focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            }
+
+            val editableNodes = mutableListOf<AccessibilityNodeInfo>()
+            findEditableNodes(root, editableNodes)
+
+            val targetNode = editableNodes.firstOrNull {
+                it.text?.toString()?.contains(targetHint, ignoreCase = true) == true ||
+                it.contentDescription?.toString()?.contains(targetHint, ignoreCase = true) == true ||
+                it.viewIdResourceName?.contains(targetHint, ignoreCase = true) == true
+            } ?: editableNodes.firstOrNull()
+
+            if (targetNode != null) {
+                targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                val args = Bundle()
+                args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, textToType)
+                return targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            }
+            false
+        } catch (e: Throwable) {
+            false
         }
-
-        // Search for editable nodes
-        val editableNodes = mutableListOf<AccessibilityNodeInfo>()
-        findEditableNodes(root, editableNodes)
-
-        val targetNode = editableNodes.firstOrNull {
-            it.text?.toString()?.contains(targetHint, ignoreCase = true) == true ||
-            it.contentDescription?.toString()?.contains(targetHint, ignoreCase = true) == true ||
-            it.viewIdResourceName?.contains(targetHint, ignoreCase = true) == true
-        } ?: editableNodes.firstOrNull()
-
-        if (targetNode != null) {
-            targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-            val args = Bundle()
-            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, textToType)
-            return targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-        }
-        return false
     }
 
     private fun findEditableNodes(node: AccessibilityNodeInfo, list: MutableList<AccessibilityNodeInfo>) {
-        if (node.isEditable) list.add(node)
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            findEditableNodes(child, list)
-        }
+        try {
+            if (node.isEditable) list.add(node)
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i) ?: continue
+                findEditableNodes(child, list)
+            }
+        } catch (e: Throwable) {}
     }
 
     /**
      * Dispatches scroll / swipe gestures for Reels (Instagram), Shorts (YouTube), Facebook
      */
     fun scrollMedia(direction: String = "up"): Boolean {
-        val displayMetrics = resources.displayMetrics
-        val width = displayMetrics.widthPixels.toFloat()
-        val height = displayMetrics.heightPixels.toFloat()
+        return try {
+            val displayMetrics = resources.displayMetrics
+            val width = displayMetrics.widthPixels.toFloat()
+            val height = displayMetrics.heightPixels.toFloat()
 
-        val startX = width / 2f
-        val endX = width / 2f
-        val startY: Float
-        val endY: Float
+            val startX = width / 2f
+            val endX = width / 2f
+            val startY: Float
+            val endY: Float
 
-        if (direction.lowercase() == "up") {
-            // Swipe up to see NEXT reel/short
-            startY = height * 0.75f
-            endY = height * 0.25f
-        } else {
-            // Swipe down to see PREVIOUS reel/short
-            startY = height * 0.25f
-            endY = height * 0.75f
+            if (direction.lowercase() == "up") {
+                startY = height * 0.75f
+                endY = height * 0.25f
+            } else {
+                startY = height * 0.25f
+                endY = height * 0.75f
+            }
+
+            val swipePath = Path()
+            swipePath.moveTo(startX, startY)
+            swipePath.lineTo(endX, endY)
+
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(swipePath, 0, 300))
+                .build()
+
+            dispatchGesture(gesture, null, null)
+        } catch (e: Throwable) {
+            false
         }
-
-        val swipePath = Path()
-        swipePath.moveTo(startX, startY)
-        swipePath.lineTo(endX, endY)
-
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(swipePath, 0, 300))
-            .build()
-
-        return dispatchGesture(gesture, null, null)
     }
 
     /**
      * Taps the center of screen to play/pause video reels
      */
     fun togglePlayPause(): Boolean {
-        val displayMetrics = resources.displayMetrics
-        val x = displayMetrics.widthPixels / 2f
-        val y = displayMetrics.heightPixels / 2f
+        return try {
+            val displayMetrics = resources.displayMetrics
+            val x = displayMetrics.widthPixels / 2f
+            val y = displayMetrics.heightPixels / 2f
 
-        val tapPath = Path()
-        tapPath.moveTo(x, y)
+            val tapPath = Path()
+            tapPath.moveTo(x, y)
 
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(tapPath, 0, 80))
-            .build()
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(tapPath, 0, 80))
+                .build()
 
-        return dispatchGesture(gesture, null, null)
+            dispatchGesture(gesture, null, null)
+        } catch (e: Throwable) {
+            false
+        }
     }
 }

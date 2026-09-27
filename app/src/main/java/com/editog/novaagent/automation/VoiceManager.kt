@@ -1,7 +1,9 @@
 package com.editog.novaagent.automation
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -10,16 +12,17 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import androidx.core.content.ContextCompat
+import com.editog.novaagent.NovaApplication
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.Locale
 
-class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
+class VoiceManager(private val context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var tts: TextToSpeech? = null
     private var speechRecognizer: SpeechRecognizer? = null
-    private var isTtsInitialized = false
 
     private val _isListening = MutableStateFlow(false)
     val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
@@ -29,37 +32,28 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
 
     var onSpeechFinalResult: ((String) -> Unit)? = null
 
-    init {
-        mainHandler.post {
-            try {
-                tts = TextToSpeech(context.applicationContext, this)
-            } catch (e: Exception) {
-                Log.e("VoiceManager", "Error initializing TTS", e)
-            }
-        }
-    }
-
-    override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) {
-            try {
-                tts?.language = Locale.US
-                tts?.setPitch(1.0f)
-                tts?.setSpeechRate(1.05f)
-                isTtsInitialized = true
-            } catch (e: Exception) {
-                Log.e("VoiceManager", "TTS config error", e)
-            }
-        }
-    }
-
     fun speak(text: String) {
+        if (text.isBlank()) return
         mainHandler.post {
             try {
-                if (tts != null) {
+                if (tts == null) {
+                    tts = TextToSpeech(context.applicationContext) { status ->
+                        if (status == TextToSpeech.SUCCESS) {
+                            try {
+                                tts?.language = Locale.US
+                                tts?.setPitch(1.0f)
+                                tts?.setSpeechRate(1.05f)
+                                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "NovaAgentTTS_${System.currentTimeMillis()}")
+                            } catch (e: Throwable) {
+                                Log.e("VoiceManager", "Error speaking after init", e)
+                            }
+                        }
+                    }
+                } else {
                     tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "NovaAgentTTS_${System.currentTimeMillis()}")
                 }
-            } catch (e: Exception) {
-                Log.e("VoiceManager", "TTS speak error", e)
+            } catch (e: Throwable) {
+                Log.e("VoiceManager", "TTS error", e)
             }
         }
     }
@@ -68,9 +62,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
         mainHandler.post {
             try {
                 tts?.stop()
-            } catch (e: Exception) {
-                Log.e("VoiceManager", "TTS stop error", e)
-            }
+            } catch (e: Throwable) {}
         }
     }
 
@@ -98,9 +90,18 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
 
     private fun startListeningInternal() {
         stopSpeaking()
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Log.w("VoiceManager", "RECORD_AUDIO permission not granted")
+            speak("Please open Nova Agent and grant microphone permission.")
+            _isListening.value = false
+            return
+        }
+
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
-            Log.w("VoiceManager", "Speech recognition not available on this device")
-            speak("Speech recognition is not available on this device.")
+            Log.w("VoiceManager", "Speech recognition not available")
+            speak("Speech recognition service is not available on this device.")
+            _isListening.value = false
             return
         }
 
@@ -128,7 +129,13 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 }
                 override fun onError(error: Int) {
                     _isListening.value = false
-                    Log.w("VoiceManager", "Speech error code: $error")
+                    Log.w("VoiceManager", "Speech recognition error: $error")
+                    when (error) {
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> speak("Microphone permission needed.")
+                        SpeechRecognizer.ERROR_AUDIO -> speak("Audio recording error.")
+                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> speak("Speech recognition requires internet.")
+                        else -> {}
+                    }
                 }
                 override fun onResults(results: Bundle?) {
                     _isListening.value = false
@@ -137,6 +144,8 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                     if (text.isNotBlank()) {
                         _recognizedText.value = text
                         onSpeechFinalResult?.invoke(text)
+                        // Also trigger global command router directly
+                        NovaApplication.instance?.processGlobalCommand(text)
                     }
                 }
                 override fun onPartialResults(partialResults: Bundle?) {
@@ -151,7 +160,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
 
             speechRecognizer?.startListening(intent)
             _isListening.value = true
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("VoiceManager", "Error starting speech recognizer", e)
             _isListening.value = false
         }
@@ -160,9 +169,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
     private fun stopListeningInternal() {
         try {
             speechRecognizer?.stopListening()
-        } catch (e: Exception) {
-            Log.e("VoiceManager", "Error stopping speech recognizer", e)
-        }
+        } catch (e: Throwable) {}
         _isListening.value = false
     }
 
@@ -174,9 +181,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener {
                 tts = null
                 speechRecognizer?.destroy()
                 speechRecognizer = null
-            } catch (e: Exception) {
-                Log.e("VoiceManager", "Error releasing voice manager", e)
-            }
+            } catch (e: Throwable) {}
         }
     }
 }
