@@ -50,3 +50,22 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Prepare Direct APK for Release
+        run: |
+          mkdir -p release-apk
+          cp app/build/outputs/apk/debug/*.apk release-apk/NovaAgent-v1.0.1.apk
+
+      - name: Create or Update GitHub Release with Direct APK
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.1
+          name: "Nova Agent v1.0.1 - Direct APK Download"
+          body: |
+            ### 🚀 Nova Agent v1.0.1 (Direct Install APK)
+            **Direct APK Download (No unzipping required)**
+            Download `NovaAgent-v1.0.1.apk` below directly to your device and tap it to install.
+          files: release-apk/NovaAgent-v1.0.1.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

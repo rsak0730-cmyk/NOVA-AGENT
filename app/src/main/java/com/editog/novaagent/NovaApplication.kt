@@ -50,12 +50,8 @@ class NovaApplication : Application() {
         instance = this
 
         // Global uncaught crash guard
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            Log.e("NovaApplication", "Uncaught exception on thread ${thread.name}", throwable)
-            if (Looper.myLooper() == Looper.getMainLooper()) {
-                defaultHandler?.uncaughtException(thread, throwable)
-            }
+            Log.e("NovaApplication", "Uncaught exception intercepted on thread ${thread.name}", throwable)
         }
     }
 
