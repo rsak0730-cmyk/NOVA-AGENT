@@ -9,14 +9,11 @@
     <!-- UI Overlay / Dynamic Island & Watchdog -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Telephony, Contacts & SMS -->
+    <!-- Telephony & Contacts (Clean, safe permissions without SMS stalkerware flags) -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.READ_SMS" />
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
 
     <!-- Audio & Voice Interaction -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -24,11 +21,6 @@
 
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Query all packages for App Launcher & Modded apps -->
-    <uses-permission
-        android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
 
     <!-- Package Visibility Queries for Speech Recognizer, TTS & Launcher on Android 11+ -->
     <queries>
@@ -72,7 +64,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Accessibility Automation Service (WatchDog + Interactor + Hardware Key Listener) -->
+        <!-- Accessibility Automation Service (WatchDog + Interactor) -->
         <service
             android:name=".service.AgentAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"

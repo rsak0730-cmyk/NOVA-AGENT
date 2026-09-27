@@ -310,7 +310,7 @@ fun SettingsScreen(
                             )
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Default.CheckCircle,
+                                    imageVector = Icons.Default.Check,
                                     contentDescription = null,
                                     tint = primaryColor,
                                     modifier = Modifier.size(18.dp)

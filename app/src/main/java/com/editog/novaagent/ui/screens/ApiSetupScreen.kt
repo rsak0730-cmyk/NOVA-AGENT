@@ -170,7 +170,7 @@ fun ApiSetupScreen(
                         trailingIcon = {
                             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                                 Icon(
-                                    imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    imageVector = if (isPasswordVisible) Icons.Default.Lock else Icons.Default.Info,
                                     contentDescription = "Toggle Visibility",
                                     tint = Color.White
                                 )

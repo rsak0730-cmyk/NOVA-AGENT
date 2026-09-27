@@ -56,7 +56,7 @@ fun DynamicIslandPreview(
             horizontalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.AutoAwesome,
+                imageVector = Icons.Default.Star,
                 contentDescription = "AI Active",
                 tint = Color(settings.themeColor.primaryHex),
                 modifier = Modifier.size(20.dp)

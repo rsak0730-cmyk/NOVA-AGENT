@@ -250,7 +250,7 @@ fun ChatScreen(
                         .padding(horizontal = 6.dp, vertical = 4.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AutoAwesome,
+                        imageVector = Icons.Default.Star,
                         contentDescription = "Nova AI",
                         tint = primaryColor,
                         modifier = Modifier.size(22.dp)
@@ -283,7 +283,7 @@ fun ChatScreen(
                         .border(1.dp, Color(0x66FF4444), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.DeleteSweep,
+                        imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Full Chat",
                         tint = Color(0xFFFF5555),
                         modifier = Modifier.size(20.dp)
@@ -390,7 +390,7 @@ fun ChatScreen(
                             .border(1.dp, if (isListening) Color(0xFFFF0055) else primaryColor, CircleShape)
                     ) {
                         Icon(
-                            imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
+                            imageVector = if (isListening) Icons.Default.Close else Icons.Default.PlayArrow,
                             contentDescription = "Voice Command",
                             tint = if (isListening) Color.White else primaryColor
                         )
