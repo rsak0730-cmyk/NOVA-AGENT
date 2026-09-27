@@ -22,10 +22,6 @@ import kotlinx.coroutines.launch
 
 class NovaApplication : Application() {
 
-    init {
-        instance = this
-    }
-
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
     val apiConfigRepository: ApiConfigRepository by lazy { ApiConfigRepository(this) }
     val chatRepository: ChatRepository by lazy { ChatRepository(this) }
@@ -48,11 +44,6 @@ class NovaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-
-        // Global uncaught crash guard
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            Log.e("NovaApplication", "Uncaught exception intercepted on thread ${thread.name}", throwable)
-        }
     }
 
     fun processGlobalCommand(userPrompt: String) {

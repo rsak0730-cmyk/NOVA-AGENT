@@ -12,8 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.res.painterResource
+import com.editog.novaagent.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -110,6 +110,56 @@ fun SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Samsung / Android 15 Restricted Settings Guidance Box
+                if (!isAccessibilityActive) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF161922), RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0xFF333A4D), RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "Samsung Galaxy / Android 15 Notice:",
+                                color = Color(0xFFFFEA00),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "If Accessibility shows 'Restricted setting':
+1. Tap 'Unblock Setting' below to open App Info.
+2. Tap the 3 dots (⋮) in the top-right corner.
+3. Tap 'Allow restricted settings' & enter PIN.
+4. Return and turn on Nova Agent!",
+                                color = Color(0xFFCBD5E1),
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data = Uri.fromParts("package", context.packageName, null)
+                                        }
+                                        context.startActivity(intent)
+                                    } catch (e: Throwable) {
+                                        Log.e("SettingsScreen", "Failed to open app details", e)
+                                    }
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFFEA00)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFEA00)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Unblock Setting (Open App Info)", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -237,7 +287,7 @@ fun SettingsScreen(
                         ) {
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
+                                    painter = painterResource(R.drawable.ic_check),
                                     contentDescription = null,
                                     tint = if (tColor == ThemeColor.NEON_WHITE || tColor == ThemeColor.NEON_YELLOW) Color.Black else Color.White,
                                     modifier = Modifier.size(18.dp)
@@ -365,7 +415,7 @@ fun SettingsScreen(
                             )
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
+                                    painter = painterResource(R.drawable.ic_check),
                                     contentDescription = null,
                                     tint = primaryColor,
                                     modifier = Modifier.size(18.dp)
