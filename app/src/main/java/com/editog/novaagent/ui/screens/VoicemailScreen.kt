@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
@@ -135,7 +136,7 @@ fun VoicemailScreen(
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(voicemails, key = { it.id }) { item ->
+                itemsIndexed(voicemails, key = { index, item -> "${item.id}_$index" }) { _, item ->
                     VoicemailCard(
                         item = item,
                         settings = settings,
