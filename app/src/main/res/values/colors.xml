@@ -1,0 +1,8 @@
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="neon_cyan">#FF00F0FF</color>
+    <color name="neon_purple">#FFBF00FF</color>
+    <color name="dark_bg">#FF0A0B0E</color>
+    <color name="surface_card">#FF13161F</color>
+</resources>
