@@ -97,7 +97,7 @@ fun VoicemailScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.Call,
+                    imageVector = Icons.Default.PhoneCallback,
                     contentDescription = null,
                     tint = primaryColor,
                     modifier = Modifier.size(24.dp)
@@ -214,7 +214,7 @@ fun VoicemailCard(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = Icons.Default.DeleteOutline,
                         contentDescription = "Delete Voicemail",
                         tint = Color(0xFFFF5555),
                         modifier = Modifier.size(20.dp)
@@ -255,7 +255,7 @@ fun VoicemailCard(
                         .background(if (item.isPlaying) Color(0xFFFF0055) else primaryColor)
                 ) {
                     Icon(
-                        imageVector = if (item.isPlaying) Icons.Default.Close else Icons.Default.PlayArrow,
+                        imageVector = if (item.isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
                         contentDescription = if (item.isPlaying) "Stop Listening" else "Listen",
                         tint = Color.Black
                     )

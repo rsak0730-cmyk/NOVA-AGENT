@@ -1,9 +1,7 @@
 package com.editog.novaagent
 
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,23 +20,14 @@ import com.editog.novaagent.ui.theme.NovaAgentTheme
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
+        // Android 15 edge-to-edge support: must be invoked before super.onCreate
         try {
             enableEdgeToEdge()
         } catch (e: Throwable) {
-            Log.e("MainActivity", "EdgeToEdge error", e)
+            Log.e("MainActivity", "EdgeToEdge init error", e)
         }
 
-        // Samsung / Android 15 Display Cutout Safe Mode
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try {
-                window.attributes.layoutInDisplayCutoutMode =
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-            } catch (e: Throwable) {
-                Log.e("MainActivity", "Cutout mode error", e)
-            }
-        }
+        super.onCreate(savedInstanceState)
 
         try {
             setContent {

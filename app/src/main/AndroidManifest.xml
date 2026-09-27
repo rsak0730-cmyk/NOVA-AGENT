@@ -9,7 +9,7 @@
     <!-- UI Overlay / Dynamic Island & Watchdog -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Telephony & Contacts (Clean, safe permissions without SMS stalkerware flags) -->
+    <!-- Telephony & Contacts (Clean, safe permissions without Knox-blocked SMS trojan signatures) -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
@@ -92,10 +92,11 @@
             android:name=".service.VoicemailService"
             android:exported="false" />
 
-        <!-- Incoming Call Broadcast Receiver -->
+        <!-- Incoming Call Broadcast Receiver protected with READ_PHONE_STATE -->
         <receiver
             android:name=".service.CallInterceptionReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.READ_PHONE_STATE">
             <intent-filter>
                 <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>

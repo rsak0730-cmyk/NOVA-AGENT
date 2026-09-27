@@ -7,5 +7,4 @@
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="true"
     android:notificationTimeout="100"
-    android:isAccessibilityTool="true"
     android:settingsActivity="com.editog.novaagent.MainActivity" />

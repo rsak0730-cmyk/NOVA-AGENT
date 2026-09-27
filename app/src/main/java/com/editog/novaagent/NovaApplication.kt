@@ -1,6 +1,7 @@
 package com.editog.novaagent
 
 import android.app.Application
+import android.os.Looper
 import android.util.Log
 import com.editog.novaagent.automation.AppLauncher
 import com.editog.novaagent.automation.ContactsHelper
@@ -52,7 +53,9 @@ class NovaApplication : Application() {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("NovaApplication", "Uncaught exception on thread ${thread.name}", throwable)
-            defaultHandler?.uncaughtException(thread, throwable)
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                defaultHandler?.uncaughtException(thread, throwable)
+            }
         }
     }
 
