@@ -13,10 +13,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
@@ -58,8 +61,6 @@ class MainActivity : AppCompatActivity() {
             Log.e("MainActivity", "Vector compat error", e)
         }
 
-        val app = (application as? NovaApplication) ?: NovaApplication.instance
-
         // Post-init checks on the window decor view so onCreate never blocks or hangs
         window.decorView.post {
             try {
@@ -71,15 +72,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContent {
-            val validApp = app ?: (application as NovaApplication)
-            val settings by validApp.settingsRepository.settings.collectAsState()
+            val validApp = (application as? NovaApplication) ?: NovaApplication.instance
 
-            NovaAgentTheme(themeColor = settings.themeColor) {
+            if (validApp != null) {
+                val settings by validApp.settingsRepository.settings.collectAsState()
+
+                NovaAgentTheme(themeColor = settings.themeColor) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color(0xFF090A0F)
+                    ) {
+                        AppNavHost(app = validApp, settings = settings)
+                    }
+                }
+            } else {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFF090A0F)
                 ) {
-                    AppNavHost(app = validApp, settings = settings)
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF00F0FF))
+                    }
                 }
             }
         }

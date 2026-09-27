@@ -22,6 +22,10 @@ import kotlinx.coroutines.launch
 
 class NovaApplication : Application() {
 
+    init {
+        instance = this
+    }
+
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
     val apiConfigRepository: ApiConfigRepository by lazy { ApiConfigRepository(this) }
     val chatRepository: ChatRepository by lazy { ChatRepository(this) }
