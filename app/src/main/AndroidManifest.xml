@@ -34,7 +34,8 @@
     <application
         android:name=".NovaApplication"
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/accessibility_service_config"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/ic_island_sparkle"
         android:label="@string/app_name"
         android:roundIcon="@drawable/ic_island_sparkle"
