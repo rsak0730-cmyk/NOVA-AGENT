@@ -54,7 +54,7 @@ jobs:
       - name: Prepare Direct APK for Release
         run: |
           mkdir -p release-apk
-          cp app/build/outputs/apk/debug/*.apk release-apk/NovaAgent-v1.0.3.apk
+          find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} release-apk/NovaAgent-v1.0.3.apk \;
 
       - name: Create or Update GitHub Release with Direct APK
         uses: softprops/action-gh-release@v2

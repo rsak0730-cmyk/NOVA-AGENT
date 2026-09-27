@@ -129,11 +129,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "If Accessibility shows 'Restricted setting':
-1. Tap 'Unblock Setting' below to open App Info.
-2. Tap the 3 dots (⋮) in the top-right corner.
-3. Tap 'Allow restricted settings' & enter PIN.
-4. Return and turn on Nova Agent!",
+                                text = "If Accessibility shows 'Restricted setting':\n1. Tap 'Unblock Setting' below to open App Info.\n2. Tap the 3 dots (⋮) in the top-right corner.\n3. Tap 'Allow restricted settings' & enter PIN.\n4. Return and turn on Nova Agent!",
                                 color = Color(0xFFCBD5E1),
                                 fontSize = 11.sp,
                                 lineHeight = 15.sp
