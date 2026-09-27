@@ -1,5 +1,6 @@
 package com.editog.novaagent
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -14,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editog.novaagent.ui.CrashReportActivity
 import com.editog.novaagent.ui.navigation.AppNavHost
 import com.editog.novaagent.ui.theme.NovaAgentTheme
 
@@ -30,64 +32,33 @@ class MainActivity : ComponentActivity() {
 
         try {
             setContent {
-                var initError by remember { mutableStateOf<String?>(null) }
+                val app = (application as? NovaApplication) ?: NovaApplication.instance
 
-                if (initError != null) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color(0xFF090A0F)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                if (app != null) {
+                    val settings by app.settingsRepository.settings.collectAsState()
+
+                    NovaAgentTheme(themeColor = settings.themeColor) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color(0xFF090A0F)
                         ) {
-                            Text("Nova Agent Recovery", color = Color(0xFF00F0FF), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(initError ?: "An initialization error occurred.", color = Color(0xFFE2E8F0), fontSize = 12.sp)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = {
-                                    initError = null
-                                    recreate()
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00F0FF), contentColor = Color.Black)
-                            ) {
-                                Text("Retry Launch", fontWeight = FontWeight.Bold)
-                            }
+                            AppNavHost(app = app, settings = settings)
                         }
                     }
                 } else {
-                    val app = (application as? NovaApplication) ?: NovaApplication.instance
-
-                    if (app != null) {
-                        val settings by app.settingsRepository.settings.collectAsState()
-
-                        NovaAgentTheme(themeColor = settings.themeColor) {
-                            Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                color = Color(0xFF090A0F)
-                            ) {
-                                AppNavHost(app = app, settings = settings)
-                            }
-                        }
-                    } else {
-                        NovaAgentTheme {
-                            Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                color = Color(0xFF090A0F)
-                            ) {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        CircularProgressIndicator(color = Color(0xFF00F0FF))
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Starting Nova Agent...", color = Color.White, fontSize = 14.sp)
-                                    }
+                    NovaAgentTheme {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color(0xFF090A0F)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    CircularProgressIndicator(color = Color(0xFF00F0FF))
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text("Starting Nova Agent...", color = Color.White, fontSize = 14.sp)
                                 }
                             }
                         }
@@ -97,28 +68,18 @@ class MainActivity : ComponentActivity() {
         } catch (e: Throwable) {
             Log.e("MainActivity", "Fatal setContent error", e)
             try {
-                setContent {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color(0xFF090A0F)
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize().padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text("Nova Agent Recovery", color = Color(0xFF00F0FF), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(e.localizedMessage ?: "Unknown initialization error", color = Color.White, fontSize = 12.sp)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { recreate() }) {
-                                Text("Restart Nova Agent")
-                            }
-                        }
-                    }
+                val sw = java.io.StringWriter()
+                e.printStackTrace(java.io.PrintWriter(sw))
+                val stackTrace = sw.toString()
+                val intent = Intent(this, CrashReportActivity::class.java).apply {
+                    putExtra(CrashReportActivity.EXTRA_ERROR_MESSAGE, e.localizedMessage ?: e.javaClass.simpleName)
+                    putExtra(CrashReportActivity.EXTRA_STACK_TRACE, stackTrace)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 }
+                startActivity(intent)
+                finish()
             } catch (e2: Throwable) {
-                Log.e("MainActivity", "Fallback setContent failed", e2)
+                Log.e("MainActivity", "Fallback to CrashReportActivity failed", e2)
             }
         }
     }

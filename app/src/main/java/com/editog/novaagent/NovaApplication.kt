@@ -1,6 +1,7 @@
 package com.editog.novaagent
 
 import android.app.Application
+import android.content.Intent
 import android.os.Looper
 import android.util.Log
 import com.editog.novaagent.automation.AppLauncher
@@ -15,6 +16,7 @@ import com.editog.novaagent.data.repository.SettingsRepository
 import com.editog.novaagent.data.repository.VoicemailRepository
 import com.editog.novaagent.service.AgentAccessibilityService
 import com.editog.novaagent.service.DynamicIslandService
+import com.editog.novaagent.ui.CrashReportActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,6 +46,30 @@ class NovaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        setupCrashHandler()
+    }
+
+    private fun setupCrashHandler() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                Log.e("NovaAgent", "FATAL UNCAUGHT EXCEPTION on thread: ${thread.name}", throwable)
+                val sw = java.io.StringWriter()
+                throwable.printStackTrace(java.io.PrintWriter(sw))
+                val stackTrace = sw.toString()
+
+                val intent = Intent(this, CrashReportActivity::class.java).apply {
+                    putExtra(CrashReportActivity.EXTRA_ERROR_MESSAGE, throwable.localizedMessage ?: throwable.javaClass.simpleName)
+                    putExtra(CrashReportActivity.EXTRA_STACK_TRACE, stackTrace)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+                startActivity(intent)
+                android.os.Process.killProcess(android.os.Process.myPid())
+                System.exit(10)
+            } catch (e: Throwable) {
+                defaultHandler?.uncaughtException(thread, throwable)
+            }
+        }
     }
 
     fun processGlobalCommand(userPrompt: String) {
@@ -65,26 +91,41 @@ class NovaApplication : Application() {
                     voiceManager.speak(resp)
                     DynamicIslandService.postAction("Opened $appQuery")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp, actionBadge = "Opened $appQuery"))
-                    return
-                }
-            }
-
-            if (lower.contains("scroll") || lower.contains("next reel") || lower.contains("next short") || lower.contains("next video")) {
-                val dir = if (lower.contains("down") || lower.contains("previous")) "down" else "up"
-                val service = AgentAccessibilityService.instance
-                val scrolled = service?.scrollMedia(dir) ?: false
-                if (scrolled) {
-                    voiceManager.speak("Scrolled")
-                    DynamicIslandService.postAction("Scrolled $dir")
-                    chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Scrolled $dir.", actionBadge = "Scrolled $dir"))
                 } else {
-                    voiceManager.speak("Please enable Nova Agent Accessibility Service in Settings to scroll.")
-                    DynamicIslandService.postAction("Accessibility required")
+                    val resp = "Could not find app \"$appQuery\" installed on this device."
+                    voiceManager.speak(resp)
+                    chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp))
                 }
                 return
             }
 
-            if (lower == "play" || lower == "pause" || lower.contains("pause video") || lower.contains("play video") || lower.contains("stop video")) {
+            if (lower.contains("scroll down") || lower.contains("next reel") || lower.contains("next short") || lower.contains("next video")) {
+                val service = AgentAccessibilityService.instance
+                val scrolled = service?.scrollMedia("up") ?: false
+                if (scrolled) {
+                    voiceManager.speak("Scrolled to next video")
+                    DynamicIslandService.postAction("Scrolled Next")
+                    chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Scrolled to next media item.", actionBadge = "Scrolled Down"))
+                } else {
+                    voiceManager.speak("Accessibility permission needed to scroll.")
+                }
+                return
+            }
+
+            if (lower.contains("scroll up") || lower.contains("previous reel") || lower.contains("previous video")) {
+                val service = AgentAccessibilityService.instance
+                val scrolled = service?.scrollMedia("down") ?: false
+                if (scrolled) {
+                    voiceManager.speak("Scrolled to previous video")
+                    DynamicIslandService.postAction("Scrolled Previous")
+                    chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Scrolled to previous media item.", actionBadge = "Scrolled Up"))
+                } else {
+                    voiceManager.speak("Accessibility permission needed to scroll.")
+                }
+                return
+            }
+
+            if (lower.contains("pause") || lower.contains("play") || lower.contains("resume video")) {
                 val service = AgentAccessibilityService.instance
                 val toggled = service?.togglePlayPause() ?: false
                 if (toggled) {
