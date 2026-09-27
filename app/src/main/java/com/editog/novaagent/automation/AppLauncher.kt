@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.util.Log
 
 class AppLauncher(private val context: Context) {
 
@@ -14,17 +15,44 @@ class AppLauncher(private val context: Context) {
     )
 
     fun getInstalledApps(): List<AppMetadata> {
+        val result = mutableMapOf<String, AppMetadata>()
         val pm = context.packageManager
-        val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-        return packages.mapNotNull { appInfo ->
-            val label = pm.getApplicationLabel(appInfo).toString()
-            val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-            if (pm.getLaunchIntentForPackage(appInfo.packageName) != null) {
-                AppMetadata(label, appInfo.packageName, isSystem)
-            } else {
-                null
+
+        // Method 1: Query Launcher Intent Activities (Guaranteed on Android 11-14)
+        try {
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
             }
+            val resolveInfos = pm.queryIntentActivities(mainIntent, 0)
+            for (ri in resolveInfos) {
+                val label = ri.loadLabel(pm).toString()
+                val pkg = ri.activityInfo.packageName
+                val isSys = (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                if (pkg.isNotBlank() && label.isNotBlank()) {
+                    result[pkg] = AppMetadata(label, pkg, isSys)
+                }
+            }
+        } catch (e: Throwable) {
+            Log.e("AppLauncher", "Error querying launcher intent activities", e)
         }
+
+        // Method 2: Query Installed Applications (Catches modded & sideloaded APKs)
+        try {
+            val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+            for (appInfo in packages) {
+                if (!result.containsKey(appInfo.packageName)) {
+                    val label = pm.getApplicationLabel(appInfo).toString()
+                    val isSys = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    if (pm.getLaunchIntentForPackage(appInfo.packageName) != null) {
+                        result[appInfo.packageName] = AppMetadata(label, appInfo.packageName, isSys)
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            Log.e("AppLauncher", "Error querying installed applications", e)
+        }
+
+        return result.values.toList()
     }
 
     fun openAppByName(query: String): Boolean {
@@ -39,15 +67,17 @@ class AppLauncher(private val context: Context) {
             match = apps.firstOrNull { it.label.lowercase().contains(cleanedQuery) || cleanedQuery.contains(it.label.lowercase()) }
         }
 
-        // 3. Common aliases
+        // 3. Common aliases (WhatsApp, YouTube, Instagram, etc.)
         if (match == null) {
             val aliasMap = mapOf(
                 "ig" to "instagram",
+                "insta" to "instagram",
                 "yt" to "youtube",
                 "wa" to "whatsapp",
                 "fb" to "facebook",
                 "play store" to "vending",
-                "messages" to "messaging"
+                "messages" to "messaging",
+                "revanced" to "youtube"
             )
             val resolvedName = aliasMap[cleanedQuery]
             if (resolvedName != null) {
@@ -63,10 +93,15 @@ class AppLauncher(private val context: Context) {
     }
 
     fun launchPackage(packageName: String): Boolean {
-        val pm = context.packageManager
-        val intent = pm.getLaunchIntentForPackage(packageName) ?: return false
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-        context.startActivity(intent)
-        return true
+        return try {
+            val pm = context.packageManager
+            val intent = pm.getLaunchIntentForPackage(packageName) ?: return false
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            context.startActivity(intent)
+            true
+        } catch (e: Throwable) {
+            Log.e("AppLauncher", "Error launching package: $packageName", e)
+            false
+        }
     }
 }

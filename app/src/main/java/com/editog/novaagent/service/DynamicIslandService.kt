@@ -30,7 +30,7 @@ class DynamicIslandService : Service() {
         fun postAction(actionDescription: String) {
             try {
                 instance?.showAction(actionDescription)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.e("DynamicIslandService", "postAction error", e)
             }
         }
@@ -48,7 +48,7 @@ class DynamicIslandService : Service() {
         try {
             initOverlay()
             observeSettings()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("DynamicIslandService", "Error in onCreate", e)
         }
     }
@@ -66,7 +66,6 @@ class DynamicIslandService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // Density conversion to pixels
         val density = resources.displayMetrics.density
         val widthPx = ((settings?.dynamicIslandWidth ?: 220) * density).toInt()
         val heightPx = ((settings?.dynamicIslandHeight ?: 48) * density).toInt()
@@ -77,8 +76,7 @@ class DynamicIslandService : Service() {
             heightPx,
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
@@ -102,7 +100,7 @@ class DynamicIslandService : Service() {
             try {
                 val drawable = ContextCompat.getDrawable(this@DynamicIslandService, R.drawable.ic_island_sparkle)
                 setImageDrawable(drawable)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 val fallback = GradientDrawable().apply {
                     shape = GradientDrawable.OVAL
                     setColor(Color.parseColor("#FF00F0FF"))
@@ -128,7 +126,7 @@ class DynamicIslandService : Service() {
 
         try {
             windowManager?.addView(islandView, params)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("DynamicIslandService", "Could not add view to WindowManager", e)
         }
     }
@@ -157,7 +155,7 @@ class DynamicIslandService : Service() {
 
         try {
             wm.updateViewLayout(view, lp)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("DynamicIslandService", "Error updating view layout", e)
         }
     }
@@ -172,7 +170,7 @@ class DynamicIslandService : Service() {
                 lp?.width = WindowManager.LayoutParams.WRAP_CONTENT
                 try {
                     windowManager?.updateViewLayout(view, lp)
-                } catch (e: Exception) {}
+                } catch (e: Throwable) {}
 
                 serviceScope.launch {
                     delay(3500)
@@ -182,7 +180,7 @@ class DynamicIslandService : Service() {
                     lp?.width = ((settings?.dynamicIslandWidth ?: 220) * density).toInt()
                     try {
                         windowManager?.updateViewLayout(view, lp)
-                    } catch (e: Exception) {}
+                    } catch (e: Throwable) {}
                 }
                 break
             }
@@ -197,7 +195,7 @@ class DynamicIslandService : Service() {
                 windowManager?.removeView(islandView)
                 islandView = null
             }
-        } catch (e: Exception) {}
+        } catch (e: Throwable) {}
         instance = null
     }
 }

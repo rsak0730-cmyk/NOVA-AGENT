@@ -1,8 +1,12 @@
 package com.editog.novaagent.ui.screens
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.editog.novaagent.NovaApplication
 import com.editog.novaagent.data.model.*
 import com.editog.novaagent.service.AgentAccessibilityService
@@ -55,10 +60,17 @@ fun ChatScreen(
 
     val primaryColor = Color(settings.themeColor.primaryHex)
 
-    // Handle speech recognition updates
-    LaunchedEffect(voiceResult) {
-        if (voiceResult.isNotBlank() && !isProcessing) {
-            textInput = voiceResult
+    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            app.voiceManager.toggleListening()
+        }
+    }
+
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
         }
     }
 
@@ -196,29 +208,9 @@ fun ChatScreen(
         if (userText.isBlank()) return
         val trimmed = userText.trim()
         textInput = ""
-        app.chatRepository.addMessage(ChatMessage(sender = MessageSender.USER, content = trimmed))
 
         coroutineScope.launch {
-            listState.animateScrollToItem(messages.size)
-            isProcessing = true
-
-            // Read live screen context if accessibility active
-            val screenContext = AgentAccessibilityService.instance?.inspectCurrentScreen()
-
-            val result = app.brainOrchestrator.processIntent(trimmed, screenContext, apiConfig)
-            isProcessing = false
-
-            result.onSuccess { decision ->
-                executeDecision(decision)
-            }.onFailure { err ->
-                app.chatRepository.addMessage(
-                    ChatMessage(
-                        sender = MessageSender.AGENT,
-                        content = "Error communicating with AI Brain: ${err.localizedMessage ?: "Unknown error"}. Please check your API Key in API Setup."
-                    )
-                )
-            }
-            listState.animateScrollToItem(messages.size)
+            app.processGlobalCommand(trimmed)
         }
     }
 
@@ -242,7 +234,6 @@ fun ChatScreen(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .clickable {
-                            // Opens Instagram Profile @edit.og_
                             val igUri = Uri.parse("https://instagram.com/edit.og_")
                             val intent = Intent(Intent.ACTION_VIEW, igUri)
                             try {
@@ -379,9 +370,15 @@ fun ChatScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Voice Mic Button
+                    // Voice Mic Button with runtime permission check
                     IconButton(
-                        onClick = { app.voiceManager.toggleListening() },
+                        onClick = {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                app.voiceManager.toggleListening()
+                            } else {
+                                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
                         modifier = Modifier
                             .size(46.dp)
                             .clip(CircleShape)
