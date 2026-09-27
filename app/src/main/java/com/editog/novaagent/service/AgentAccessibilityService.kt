@@ -1,8 +1,10 @@
 package com.editog.novaagent.service
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
@@ -30,7 +32,18 @@ class AgentAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         _isServiceActive.value = true
-        Log.i("AgentAccessibility", "Nova Agent Accessibility Service connected successfully on Android 15+")
+
+        try {
+            val info = serviceInfo ?: AccessibilityServiceInfo()
+            info.flags = info.flags or
+                AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+            serviceInfo = info
+            Log.i("AgentAccessibility", "Nova Agent Accessibility Service connected & key event filter enabled")
+        } catch (e: Throwable) {
+            Log.e("AgentAccessibility", "Error configuring serviceInfo", e)
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -63,7 +76,8 @@ class AgentAccessibilityService : AccessibilityService() {
             if (event != null && event.keyCode == KeyEvent.KEYCODE_VOLUME_UP && event.action == KeyEvent.ACTION_DOWN) {
                 val app = (application as? NovaApplication) ?: NovaApplication.instance
                 app?.voiceManager?.toggleListening()
-                DynamicIslandService.postAction("Listening toggle (Vol+ key)")
+                val isNowListening = app?.voiceManager?.isListening?.value ?: false
+                DynamicIslandService.postAction(if (isNowListening) "🎙️ Listening... (Vol+)" else "Voice Stopped")
                 return true // Consume key event
             }
         } catch (e: Throwable) {
@@ -115,27 +129,84 @@ class AgentAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Performs click on an element matching text or ID
+     * Performs click on an element matching text, description or ID
      */
     fun clickElement(targetTextOrId: String): Boolean {
-        return try {
-            val root = rootInActiveWindow ?: return false
-            val nodes = root.findAccessibilityNodeInfosByText(targetTextOrId)
-            for (node in nodes) {
-                if (node.isClickable) {
-                    val clicked = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                    if (clicked) return true
-                }
-                var parent = node.parent
-                while (parent != null) {
-                    if (parent.isClickable) {
-                        val clicked = parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                        if (clicked) return true
-                    }
-                    parent = parent.parent
-                }
+        if (targetTextOrId.isBlank()) return false
+        val cleanTarget = targetTextOrId.trim()
+        val root = rootInActiveWindow ?: return false
+
+        // 1. Try system text search
+        val nodes = root.findAccessibilityNodeInfosByText(cleanTarget)
+        for (node in nodes) {
+            if (node.isClickable && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                return true
             }
-            false
+            var parent = node.parent
+            while (parent != null) {
+                if (parent.isClickable && parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    return true
+                }
+                parent = parent.parent
+            }
+            // Fallback: gesture tap at center
+            if (tapNodeCoordinates(node)) return true
+        }
+
+        // 2. Deep recursive search for partial/contentDescription matches
+        val matchingNode = findDeepMatchingNode(root, cleanTarget)
+        if (matchingNode != null) {
+            if (matchingNode.isClickable && matchingNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                return true
+            }
+            var parent = matchingNode.parent
+            while (parent != null) {
+                if (parent.isClickable && parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    return true
+                }
+                parent = parent.parent
+            }
+            if (tapNodeCoordinates(matchingNode)) return true
+        }
+
+        return false
+    }
+
+    private fun findDeepMatchingNode(node: AccessibilityNodeInfo?, target: String): AccessibilityNodeInfo? {
+        if (node == null) return null
+        val text = node.text?.toString()
+        val desc = node.contentDescription?.toString()
+        val viewId = node.viewIdResourceName
+
+        if (text?.contains(target, ignoreCase = true) == true ||
+            desc?.contains(target, ignoreCase = true) == true ||
+            viewId?.contains(target, ignoreCase = true) == true) {
+            return node
+        }
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val result = findDeepMatchingNode(child, target)
+            if (result != null) return result
+        }
+        return null
+    }
+
+    private fun tapNodeCoordinates(node: AccessibilityNodeInfo): Boolean {
+        return try {
+            val rect = Rect()
+            node.getBoundsInScreen(rect)
+            if (rect.width() > 0 && rect.height() > 0) {
+                val cx = rect.centerX().toFloat()
+                val cy = rect.centerY().toFloat()
+                val path = Path().apply { moveTo(cx, cy) }
+                val gesture = GestureDescription.Builder()
+                    .addStroke(GestureDescription.StrokeDescription(path, 0, 60))
+                    .build()
+                dispatchGesture(gesture, null, null)
+            } else {
+                false
+            }
         } catch (e: Throwable) {
             false
         }
@@ -201,18 +272,19 @@ class AgentAccessibilityService : AccessibilityService() {
 
             if (direction.lowercase() == "up") {
                 startY = height * 0.75f
-                endY = height * 0.25f
+                endY = height * 0.22f
             } else {
-                startY = height * 0.25f
+                startY = height * 0.22f
                 endY = height * 0.75f
             }
 
-            val swipePath = Path()
-            swipePath.moveTo(startX, startY)
-            swipePath.lineTo(endX, endY)
+            val swipePath = Path().apply {
+                moveTo(startX, startY)
+                lineTo(endX, endY)
+            }
 
             val gesture = GestureDescription.Builder()
-                .addStroke(GestureDescription.StrokeDescription(swipePath, 0, 300))
+                .addStroke(GestureDescription.StrokeDescription(swipePath, 0, 220))
                 .build()
 
             dispatchGesture(gesture, null, null)
@@ -230,11 +302,9 @@ class AgentAccessibilityService : AccessibilityService() {
             val x = displayMetrics.widthPixels / 2f
             val y = displayMetrics.heightPixels / 2f
 
-            val tapPath = Path()
-            tapPath.moveTo(x, y)
-
+            val tapPath = Path().apply { moveTo(x, y) }
             val gesture = GestureDescription.Builder()
-                .addStroke(GestureDescription.StrokeDescription(tapPath, 0, 80))
+                .addStroke(GestureDescription.StrokeDescription(tapPath, 0, 60))
                 .build()
 
             dispatchGesture(gesture, null, null)

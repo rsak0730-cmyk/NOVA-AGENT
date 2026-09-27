@@ -113,7 +113,7 @@ class DynamicIslandService : Service() {
 
             val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Nova Agent Dynamic Island")
-                .setContentText("Tap island pill on top of screen anytime to talk with Jarvis")
+                .setContentText("Tap island anytime to talk with Jarvis")
                 .setSmallIcon(R.drawable.ic_island_sparkle)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
@@ -122,7 +122,8 @@ class DynamicIslandService : Service() {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 if (Build.VERSION.SDK_INT >= 34) {
-                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                    val fgType = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    startForeground(NOTIFICATION_ID, notification, fgType)
                 } else {
                     startForeground(NOTIFICATION_ID, notification)
                 }
@@ -176,6 +177,8 @@ class DynamicIslandService : Service() {
         val pill = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
+            isClickable = true
+            isFocusable = false
             setPadding((14 * density).toInt(), (4 * density).toInt(), (14 * density).toInt(), (4 * density).toInt())
             val bg = GradientDrawable().apply {
                 setColor(Color.parseColor("#F2000000"))
@@ -184,60 +187,56 @@ class DynamicIslandService : Service() {
             }
             background = bg
 
-            // Single tap: Toggle voice listening mode
-            // Long tap: Launch Nova Agent App
-            setOnTouchListener(object : View.OnTouchListener {
-                private var startX = 0f
-                private var startY = 0f
-                private var initialX = 0
-                private var initialY = 0
-                private var isDragging = false
-                private var startTime = 0L
+            // Tapping pill turns on / toggles listening mode!
+            // Never opens the agent app.
+            var downTime = 0L
+            var startX = 0f
+            var startY = 0f
+            var isDragging = false
 
-                override fun onTouch(v: View, event: MotionEvent): Boolean {
-                    when (event.action) {
-                        MotionEvent.ACTION_DOWN -> {
+            setOnTouchListener { v, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downTime = System.currentTimeMillis()
+                        startX = event.rawX
+                        startY = event.rawY
+                        isDragging = false
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = (event.rawX - startX).toInt()
+                        val dy = (event.rawY - startY).toInt()
+                        if (abs(dx) > 35 || abs(dy) > 35) {
+                            isDragging = true
+                            params.x += dx
+                            params.y += dy
                             startX = event.rawX
                             startY = event.rawY
-                            initialX = params.x
-                            initialY = params.y
-                            startTime = System.currentTimeMillis()
-                            isDragging = false
-                            return true
+                            try {
+                                windowManager?.updateViewLayout(this, params)
+                            } catch (e: Throwable) {}
                         }
-                        MotionEvent.ACTION_MOVE -> {
-                            val dx = (event.rawX - startX).toInt()
-                            val dy = (event.rawY - startY).toInt()
-                            if (abs(dx) > 10 || abs(dy) > 10) {
-                                isDragging = true
-                                params.x = initialX + dx
-                                params.y = initialY + dy
-                                try {
-                                    windowManager?.updateViewLayout(pill, params)
-                                } catch (e: Throwable) {}
-                            }
-                            return true
-                        }
-                        MotionEvent.ACTION_UP -> {
-                            if (!isDragging) {
-                                // Click / Tap: Turn on or toggle voice listening mode directly!
-                                // Never open the agent app - stay in current app and stream speech to chat
-                                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                toggleVoiceListening()
-                            } else {
-                                // Persist user drag location to settings
-                                app?.settingsRepository?.let { repo ->
-                                    val current = repo.settings.value
-                                    val newYDp = (params.y / density).toInt()
-                                    repo.updateSettings(current.copy(dynamicIslandX = params.x, dynamicIslandY = newYDp))
-                                }
-                            }
-                            return true
-                        }
+                        true
                     }
-                    return false
+                    MotionEvent.ACTION_UP -> {
+                        val duration = System.currentTimeMillis() - downTime
+                        if (!isDragging || duration < 350) {
+                            // Single Tap confirmed! Toggle voice listening mode directly
+                            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            toggleVoiceListening()
+                        } else {
+                            // Persist user drag location
+                            app?.settingsRepository?.let { repo ->
+                                val current = repo.settings.value
+                                val newYDp = (params.y / density).toInt()
+                                repo.updateSettings(current.copy(dynamicIslandX = params.x, dynamicIslandY = newYDp))
+                            }
+                        }
+                        true
+                    }
+                    else -> false
                 }
-            })
+            }
         }
 
         val icon = ImageView(this).apply {
@@ -283,8 +282,6 @@ class DynamicIslandService : Service() {
         val app = (application as? NovaApplication) ?: NovaApplication.instance ?: return
         app.voiceManager.toggleListening()
     }
-
-
 
     private fun observeSettings() {
         val app = (application as? NovaApplication) ?: NovaApplication.instance ?: return
@@ -336,7 +333,7 @@ class DynamicIslandService : Service() {
     private fun showListeningState() {
         val density = resources.displayMetrics.density
         islandIcon?.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic))
-        islandText?.text = "Listening... Speak to Jarvis"
+        islandText?.text = "🎙️ Listening... Speak now"
         (islandContainer?.background as? GradientDrawable)?.apply {
             setStroke((2 * density).toInt(), Color.parseColor("#FF0055"))
         }
@@ -388,7 +385,7 @@ class DynamicIslandService : Service() {
         // Set action icon depending on content
         val iconRes = when {
             action.contains("Call", ignoreCase = true) || action.contains("Dial", ignoreCase = true) -> R.drawable.ic_island_sparkle
-            action.contains("Heard", ignoreCase = true) || action.contains("Speak", ignoreCase = true) -> R.drawable.ic_mic
+            action.contains("Listening", ignoreCase = true) || action.contains("Mic", ignoreCase = true) || action.contains("Heard", ignoreCase = true) -> R.drawable.ic_mic
             action.contains("Voicemail", ignoreCase = true) -> R.drawable.ic_voicemail
             action.contains("Play", ignoreCase = true) -> R.drawable.ic_play
             action.contains("Stop", ignoreCase = true) -> R.drawable.ic_stop

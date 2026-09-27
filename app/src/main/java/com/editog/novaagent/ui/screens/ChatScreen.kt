@@ -33,6 +33,7 @@ import com.editog.novaagent.NovaApplication
 import com.editog.novaagent.R
 import com.editog.novaagent.data.model.*
 import com.editog.novaagent.service.DynamicIslandService
+import com.editog.novaagent.service.AgentAccessibilityService
 import com.editog.novaagent.ui.components.ConfirmationDialog
 import com.editog.novaagent.ui.components.StyledText
 import com.editog.novaagent.ui.theme.applyUiStyle
@@ -212,6 +213,57 @@ fun ChatScreen(
                             modifier = Modifier.height(30.dp)
                         ) {
                             Text("Enable", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Accessibility Service Banner (required for Volume Up and real-time screen actions)
+            val isAccessibilityActive = AgentAccessibilityService.instance != null
+            if (!isAccessibilityActive) {
+                Surface(
+                    color = Color(0xFF2E1905),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 3.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9900))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "⚡", fontSize = 16.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Enable Accessibility for Vol+ & Actions",
+                                    color = Color(0xFFFFCC00),
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Required for Volume Up listening & scrolling Reels",
+                                    color = Color(0xFFE2E8F0),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                                context.startActivity(intent)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9900), contentColor = Color.Black),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Text("Turn On", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

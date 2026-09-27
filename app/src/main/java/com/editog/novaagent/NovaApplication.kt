@@ -223,7 +223,46 @@ class NovaApplication : Application() {
                 return
             }
 
-            // 6. TYPING INTO FOCUSED INPUT
+            // 6. FAST CLICK / TAP ON ACTIVE SCREEN
+            if (lower.startsWith("click ") || lower.startsWith("tap ") || lower.startsWith("press ")) {
+                val targetText = lower.removePrefix("click ").removePrefix("tap ").removePrefix("press ").trim()
+                val service = AgentAccessibilityService.instance
+                val clicked = service?.clickElement(targetText) ?: false
+                if (clicked) {
+                    val resp = "Clicked $targetText."
+                    voiceManager.speak(resp)
+                    DynamicIslandService.postAction("Clicked $targetText")
+                    chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp, actionBadge = "Clicked $targetText"))
+                } else {
+                    voiceManager.speak("Could not locate \"$targetText\" on the screen.")
+                }
+                return
+            }
+
+            // 7. FAST SCREEN INSPECTION
+            if (lower.contains("what is on my screen") || lower.contains("what's on my screen") || lower.contains("inspect screen") || lower.contains("read screen")) {
+                val service = AgentAccessibilityService.instance
+                val screenContext = service?.inspectCurrentScreen() ?: "Screen unavailable"
+                DynamicIslandService.postAction("Inspecting Screen")
+                val cfg = apiConfigRepository.config.value
+                if (cfg.apiKey.isNotBlank()) {
+                    appScope.launch {
+                        val result = brainOrchestrator.processIntent("Summarize and explain what is visible on this screen for the user.", screenContext, cfg)
+                        result.onSuccess { decision ->
+                            voiceManager.speak(decision.assistant_response)
+                            DynamicIslandService.postAction("Screen Analyzed")
+                            chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = decision.assistant_response, actionBadge = "Watchdog Screen Analysis"))
+                        }
+                    }
+                } else {
+                    val resp = "Screen elements found:\n$screenContext"
+                    voiceManager.speak("Screen inspected. To get deep AI reasoning, add your Gemini key in API Setup.")
+                    chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp, actionBadge = "Screen Context"))
+                }
+                return
+            }
+
+            // 8. TYPING INTO FOCUSED INPUT
             if (lower.startsWith("type ") || lower.startsWith("search for ") || lower.startsWith("search ")) {
                 val textToType = lower.removePrefix("type ").removePrefix("search for ").removePrefix("search ").trim()
                 val service = AgentAccessibilityService.instance
@@ -238,7 +277,7 @@ class NovaApplication : Application() {
                 return
             }
 
-            // 7. AI BRAIN REASONING (Gemini / AI Studio or OpenAI)
+            // 9. AI BRAIN REASONING (Gemini / AI Studio or OpenAI)
             val config = apiConfigRepository.config.value
             if (config.apiKey.isBlank()) {
                 val noKeyMessage = "At your command, sir. For deep conversational reasoning and Jarvis intelligence, please paste your Gemini API Studio key in the API Setup tab. You can still use voice commands to open apps, make calls, or scroll."

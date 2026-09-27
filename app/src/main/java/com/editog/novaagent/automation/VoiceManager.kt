@@ -13,7 +13,7 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.editog.novaagent.NovaApplication
+import com.editog.novaagent.service.DynamicIslandService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -93,8 +93,9 @@ class VoiceManager(private val context: Context) {
 
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Log.w("VoiceManager", "RECORD_AUDIO permission not granted")
-            speak("Please open Nova Agent and grant microphone permission.")
+            speak("Microphone permission needed. Please allow microphone in settings.")
             _isListening.value = false
+            DynamicIslandService.postAction("Mic Permission Needed")
             return
         }
 
@@ -102,17 +103,25 @@ class VoiceManager(private val context: Context) {
             Log.w("VoiceManager", "Speech recognition not available")
             speak("Speech recognition service is not available on this device.")
             _isListening.value = false
+            DynamicIslandService.postAction("Speech Service Unavailable")
             return
         }
 
         try {
-            if (speechRecognizer == null) {
-                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context.applicationContext)
-            }
+            // Clean up previous recognizer instance completely
+            try {
+                speechRecognizer?.stopListening()
+                speechRecognizer?.cancel()
+                speechRecognizer?.destroy()
+                speechRecognizer = null
+            } catch (e: Throwable) {}
+
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context.applicationContext)
 
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             }
@@ -120,8 +129,11 @@ class VoiceManager(private val context: Context) {
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
                     _isListening.value = true
+                    DynamicIslandService.postAction("🎙️ Listening... Speak now")
                 }
-                override fun onBeginningOfSpeech() {}
+                override fun onBeginningOfSpeech() {
+                    _isListening.value = true
+                }
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {
@@ -131,10 +143,12 @@ class VoiceManager(private val context: Context) {
                     _isListening.value = false
                     Log.w("VoiceManager", "Speech recognition error: $error")
                     when (error) {
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> speak("Microphone permission needed.")
-                        SpeechRecognizer.ERROR_AUDIO -> speak("Audio recording error.")
-                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> speak("Speech recognition requires internet.")
-                        else -> {}
+                        SpeechRecognizer.ERROR_NO_MATCH -> DynamicIslandService.postAction("No speech heard")
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> DynamicIslandService.postAction("Listening timeout")
+                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> DynamicIslandService.postAction("Network timeout")
+                        SpeechRecognizer.ERROR_AUDIO -> DynamicIslandService.postAction("Audio error")
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> DynamicIslandService.postAction("Mic permission needed")
+                        else -> DynamicIslandService.postAction("Listening ended ($error)")
                     }
                 }
                 override fun onResults(results: Bundle?) {
@@ -144,6 +158,8 @@ class VoiceManager(private val context: Context) {
                     if (text.isNotBlank()) {
                         _recognizedText.value = text
                         onSpeechFinalResult?.invoke(text)
+                    } else {
+                        DynamicIslandService.postAction("No words recognized")
                     }
                 }
                 override fun onPartialResults(partialResults: Bundle?) {
@@ -158,15 +174,18 @@ class VoiceManager(private val context: Context) {
 
             speechRecognizer?.startListening(intent)
             _isListening.value = true
+            DynamicIslandService.postAction("🎙️ Listening...")
         } catch (e: Throwable) {
             Log.e("VoiceManager", "Error starting speech recognizer", e)
             _isListening.value = false
+            DynamicIslandService.postAction("Mic error: ${e.localizedMessage?.take(16)}")
         }
     }
 
     private fun stopListeningInternal() {
         try {
             speechRecognizer?.stopListening()
+            speechRecognizer?.cancel()
         } catch (e: Throwable) {}
         _isListening.value = false
     }
