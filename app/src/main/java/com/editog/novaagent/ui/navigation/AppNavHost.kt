@@ -35,7 +35,7 @@ fun AppNavHost(
                 containerColor = Color(0xFF0C0E16),
                 contentColor = Color.White
             ) {
-                BottomNavItem.items.forEach { item ->
+                BottomNavItem.items.filterNotNull().forEach { item ->
                     val isSelected = currentRoute == item.route
                     NavigationBarItem(
                         icon = {
