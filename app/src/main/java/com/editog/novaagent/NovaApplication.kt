@@ -22,25 +22,16 @@ import kotlinx.coroutines.launch
 
 class NovaApplication : Application() {
 
-    lateinit var settingsRepository: SettingsRepository
-        private set
-    lateinit var apiConfigRepository: ApiConfigRepository
-        private set
-    lateinit var chatRepository: ChatRepository
-        private set
-    lateinit var voicemailRepository: VoicemailRepository
-        private set
+    val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
+    val apiConfigRepository: ApiConfigRepository by lazy { ApiConfigRepository(this) }
+    val chatRepository: ChatRepository by lazy { ChatRepository(this) }
+    val voicemailRepository: VoicemailRepository by lazy { VoicemailRepository(this) }
 
-    lateinit var appLauncher: AppLauncher
-        private set
-    lateinit var contactsHelper: ContactsHelper
-        private set
-    lateinit var telephonyHelper: TelephonyHelper
-        private set
-    lateinit var voiceManager: VoiceManager
-        private set
-    lateinit var brainOrchestrator: AgentBrainOrchestrator
-        private set
+    val appLauncher: AppLauncher by lazy { AppLauncher(this) }
+    val contactsHelper: ContactsHelper by lazy { ContactsHelper(this) }
+    val telephonyHelper: TelephonyHelper by lazy { TelephonyHelper(this) }
+    val voiceManager: VoiceManager by lazy { VoiceManager(this) }
+    val brainOrchestrator: AgentBrainOrchestrator by lazy { AgentBrainOrchestrator() }
 
     private val appScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -55,22 +46,11 @@ class NovaApplication : Application() {
         }
 
         try {
-            settingsRepository = SettingsRepository(this)
-            apiConfigRepository = ApiConfigRepository(this)
-            chatRepository = ChatRepository(this)
-            voicemailRepository = VoicemailRepository(this)
-
-            appLauncher = AppLauncher(this)
-            contactsHelper = ContactsHelper(this)
-            telephonyHelper = TelephonyHelper(this)
-            voiceManager = VoiceManager(this)
-            brainOrchestrator = AgentBrainOrchestrator()
-
             voiceManager.onSpeechFinalResult = { speechText ->
                 processGlobalCommand(speechText)
             }
         } catch (e: Throwable) {
-            Log.e("NovaApplication", "Fatal error in Application.onCreate", e)
+            Log.e("NovaApplication", "Error configuring voice callback", e)
         }
     }
 
