@@ -6,9 +6,11 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
@@ -25,27 +27,46 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        // Handle runtime permissions results
+        Log.d("MainActivity", "Permissions updated: $permissions")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Vector compat error", e)
+        }
 
         val app = application as NovaApplication
-        requestNecessaryPermissions()
-        startDynamicIslandIfPermitted()
 
-        setContent {
-            val settings by app.settingsRepository.settings.collectAsState()
+        try {
+            requestNecessaryPermissions()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error requesting permissions", e)
+        }
 
-            NovaAgentTheme(themeColor = settings.themeColor) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF090A0F)
-                ) {
-                    AppNavHost(app = app, settings = settings)
+        try {
+            startDynamicIslandIfPermitted()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error starting dynamic island", e)
+        }
+
+        try {
+            setContent {
+                val settings by app.settingsRepository.settings.collectAsState()
+
+                NovaAgentTheme(themeColor = settings.themeColor) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color(0xFF090A0F)
+                    ) {
+                        AppNavHost(app = app, settings = settings)
+                    }
                 }
             }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error rendering Compose content", e)
         }
     }
 
@@ -81,6 +102,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        startDynamicIslandIfPermitted()
+        try {
+            startDynamicIslandIfPermitted()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error onResume dynamic island start", e)
+        }
     }
 }
