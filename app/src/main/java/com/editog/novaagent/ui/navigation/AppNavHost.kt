@@ -26,7 +26,7 @@ fun AppNavHost(
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: BottomNavItem.Chat.route
+    val currentRoute = navBackStackEntry?.destination?.route ?: "chat"
     val primaryColor = Color(settings.themeColor.primaryHex)
 
     Scaffold(
@@ -35,7 +35,7 @@ fun AppNavHost(
                 containerColor = Color(0xFF0C0E16),
                 contentColor = Color.White
             ) {
-                BottomNavItem.items.filterNotNull().forEach { item ->
+                BottomNavItem.items.forEach { item ->
                     val isSelected = currentRoute == item.route
                     NavigationBarItem(
                         icon = {
@@ -75,21 +75,21 @@ fun AppNavHost(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = BottomNavItem.Chat.route,
+            startDestination = "chat",
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            composable(BottomNavItem.Chat.route) {
+            composable("chat") {
                 ChatScreen(app = app, settings = settings)
             }
-            composable(BottomNavItem.ApiSetup.route) {
+            composable("api_setup") {
                 ApiSetupScreen(app = app, settings = settings)
             }
-            composable(BottomNavItem.Voicemail.route) {
+            composable("voicemail") {
                 VoicemailScreen(app = app, settings = settings)
             }
-            composable(BottomNavItem.Settings.route) {
+            composable("settings") {
                 SettingsScreen(app = app, currentSettings = settings)
             }
         }

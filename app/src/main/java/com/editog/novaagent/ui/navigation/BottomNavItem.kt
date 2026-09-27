@@ -14,7 +14,11 @@ data class BottomNavItem(
         val Voicemail = BottomNavItem("voicemail", "Voicemail", R.drawable.ic_voicemail)
         val Settings = BottomNavItem("settings", "Settings", R.drawable.ic_nav_settings)
 
-        val items: List<BottomNavItem>
-            get() = listOf(Chat, ApiSetup, Voicemail, Settings)
+        val items: List<BottomNavItem> = listOf(
+            BottomNavItem("chat", "Chat", R.drawable.ic_nav_chat),
+            BottomNavItem("api_setup", "API Setup", R.drawable.ic_nav_key),
+            BottomNavItem("voicemail", "Voicemail", R.drawable.ic_voicemail),
+            BottomNavItem("settings", "Settings", R.drawable.ic_nav_settings)
+        )
     }
 }
