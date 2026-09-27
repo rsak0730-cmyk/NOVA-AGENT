@@ -1,5 +1,6 @@
 package com.editog.novaagent.data.api
 
+import android.util.Log
 import com.editog.novaagent.data.model.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -9,7 +10,7 @@ class AgentBrainOrchestrator(
     private val geminiService: GeminiApiService = GeminiApiService(),
     private val openAiService: OpenAiCompatibleService = OpenAiCompatibleService()
 ) {
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     private val systemPrompt = """
         You are Nova Agent, an autonomous Android AI assistant with the brain of Gemini.
@@ -67,7 +68,15 @@ class AgentBrainOrchestrator(
 
     private fun parseDecision(rawJson: String, fallbackPrompt: String): AgentDecision {
         return try {
-            val root = json.parseToJsonElement(rawJson).jsonObject
+            val startIdx = rawJson.indexOf('{')
+            val endIdx = rawJson.lastIndexOf('}')
+            val cleanJson = if (startIdx != -1 && endIdx != -1 && endIdx > startIdx) {
+                rawJson.substring(startIdx, endIdx + 1)
+            } else {
+                rawJson.trim()
+            }
+
+            val root = json.parseToJsonElement(cleanJson).jsonObject
             val thought = root["thought"]?.jsonPrimitive?.content ?: ""
             val assistantResponse = root["assistant_response"]?.jsonPrimitive?.content
                 ?: "I have processed your request."
@@ -102,7 +111,7 @@ class AgentBrainOrchestrator(
 
             AgentDecision(thought, command, assistantResponse)
         } catch (e: Exception) {
-            // Fallback heuristics if model returns plain text
+            Log.w("AgentBrainOrchestrator", "JSON parse fallback for raw response: $rawJson", e)
             AgentDecision(
                 thought = "Direct response parse",
                 command = AgentCommand.GeneralResponse(rawJson.take(200)),

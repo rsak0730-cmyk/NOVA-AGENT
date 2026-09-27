@@ -1,7 +1,9 @@
 package com.editog.novaagent.ui.screens
 
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -109,27 +111,80 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Overlay Permission Check
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Overlay Permission & Service Toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Dynamic Island Floating Overlay",
-                        color = Color(0xFFCBD5E1),
-                        fontSize = 13.sp
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Dynamic Island Floating Overlay",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                        val hasOverlay = Settings.canDrawOverlays(context)
+                        val isIslandRunning = DynamicIslandService.instance != null
+                        Text(
+                            text = if (isIslandRunning) "Active: Floating on top of apps" else if (hasOverlay) "Ready: Toggle to show floating pill" else "Disabled: Tap 'Perms' to grant overlay",
+                            color = if (isIslandRunning) Color(0xFF00FF66) else Color(0xFF9CA3AF),
+                            fontSize = 12.sp
+                        )
+                    }
 
-                    Button(
-                        onClick = {
-                            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-                            context.startActivity(intent)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1F2433)),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Overlay Perms", color = primaryColor, fontSize = 11.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!Settings.canDrawOverlays(context)) {
+                            Button(
+                                onClick = {
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:${context.packageName}")
+                                    )
+                                    context.startActivity(intent)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1F2433)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.padding(end = 6.dp)
+                            ) {
+                                Text("Perms", color = primaryColor, fontSize = 11.sp)
+                            }
+                        }
+
+                        Switch(
+                            checked = currentSettings.dynamicIslandEnabled && Settings.canDrawOverlays(context),
+                            onCheckedChange = { enable ->
+                                if (enable) {
+                                    if (Settings.canDrawOverlays(context)) {
+                                        app.settingsRepository.updateSettings(currentSettings.copy(dynamicIslandEnabled = true))
+                                        try {
+                                            context.startService(Intent(context, DynamicIslandService::class.java))
+                                        } catch (e: Throwable) {
+                                            Log.e("SettingsScreen", "Failed to start DynamicIslandService", e)
+                                        }
+                                    } else {
+                                        val intent = Intent(
+                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            Uri.parse("package:${context.packageName}")
+                                        )
+                                        context.startActivity(intent)
+                                    }
+                                } else {
+                                    app.settingsRepository.updateSettings(currentSettings.copy(dynamicIslandEnabled = false))
+                                    try {
+                                        context.stopService(Intent(context, DynamicIslandService::class.java))
+                                    } catch (e: Throwable) {
+                                        Log.e("SettingsScreen", "Failed to stop DynamicIslandService", e)
+                                    }
+                                }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = primaryColor,
+                                checkedTrackColor = primaryColor.copy(alpha = 0.4f)
+                            )
+                        )
                     }
                 }
             }

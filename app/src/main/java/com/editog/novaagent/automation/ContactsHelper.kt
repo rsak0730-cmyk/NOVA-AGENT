@@ -1,14 +1,24 @@
 package com.editog.novaagent.automation
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.database.Cursor
 import android.provider.ContactsContract
+import android.util.Log
+import androidx.core.content.ContextCompat
 import com.editog.novaagent.data.model.ContactRowChoice
 
 class ContactsHelper(private val context: Context) {
 
     fun searchContacts(queryName: String): List<ContactRowChoice> {
         val results = mutableListOf<ContactRowChoice>()
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            Log.w("ContactsHelper", "READ_CONTACTS permission not granted")
+            return results
+        }
+
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
@@ -51,9 +61,11 @@ class ContactsHelper(private val context: Context) {
                 } while (cursor.moveToNext())
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("ContactsHelper", "Error querying contacts", e)
         } finally {
-            cursor?.close()
+            try {
+                cursor?.close()
+            } catch (e: Throwable) {}
         }
 
         return results

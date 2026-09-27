@@ -1,5 +1,6 @@
 package com.editog.novaagent.data.api
 
+import android.util.Log
 import com.editog.novaagent.data.model.ApiConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,9 +15,10 @@ class GeminiApiService {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     suspend fun generateContent(
         config: ApiConfig,
@@ -24,8 +26,10 @@ class GeminiApiService {
         prompt: String
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val model = if (config.modelName.isNotBlank()) config.modelName else "gemini-1.5-flash"
-            val url = "${config.baseUrl.trimEnd('/')}/v1beta/models/$model:generateContent?key=${config.apiKey.trim()}"
+            val rawModel = if (config.modelName.isNotBlank()) config.modelName.trim() else "gemini-1.5-flash"
+            val cleanModel = rawModel.removePrefix("models/")
+            val rawBaseUrl = if (config.baseUrl.isNotBlank()) config.baseUrl.trim().trimEnd('/') else "https://generativelanguage.googleapis.com"
+            val url = "$rawBaseUrl/v1beta/models/$cleanModel:generateContent?key=${config.apiKey.trim()}"
 
             val requestJson = buildJsonObject {
                 putJsonObject("systemInstruction") {
@@ -57,6 +61,7 @@ class GeminiApiService {
             val responseBody = response.body?.string() ?: ""
 
             if (!response.isSuccessful) {
+                Log.e("GeminiApiService", "API Error ${response.code}: $responseBody")
                 return@withContext Result.failure(Exception("Gemini API error ${response.code}: $responseBody"))
             }
 
@@ -65,10 +70,11 @@ class GeminiApiService {
             val firstCandidate = candidates?.firstOrNull()?.jsonObject
             val parts = firstCandidate?.get("content")?.jsonObject?.get("parts")?.jsonArray
             val textContent = parts?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content
-                ?: return@withContext Result.failure(Exception("No content returned from Gemini"))
+                ?: return@withContext Result.failure(Exception("No text content returned from Gemini"))
 
             Result.success(textContent)
         } catch (e: Exception) {
+            Log.e("GeminiApiService", "Exception during generateContent", e)
             Result.failure(e)
         }
     }

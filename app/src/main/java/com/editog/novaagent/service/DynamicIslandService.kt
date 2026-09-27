@@ -100,6 +100,19 @@ class DynamicIslandService : Service() {
                 setStroke((2 * density).toInt(), Color.parseColor("#4000F0FF"))
             }
             background = bg
+
+            // Tap to bring Nova Agent to front
+            setOnClickListener {
+                try {
+                    val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                    if (launchIntent != null) {
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        startActivity(launchIntent)
+                    }
+                } catch (e: Throwable) {
+                    Log.e("DynamicIslandService", "Error launching app from island tap", e)
+                }
+            }
         }
 
         val icon = ImageView(this).apply {

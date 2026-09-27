@@ -175,18 +175,53 @@ class NovaApplication : Application() {
                         voiceManager.speak(decision.assistant_response)
                         DynamicIslandService.postAction(decision.assistant_response.take(24))
 
+                        var badge: String? = null
                         when (val cmd = decision.command) {
-                            is AgentCommand.OpenApp -> appLauncher.openAppByName(cmd.app_name)
-                            is AgentCommand.Scroll -> AgentAccessibilityService.instance?.scrollMedia(cmd.direction)
-                            is AgentCommand.Click -> AgentAccessibilityService.instance?.clickElement(cmd.target_text)
-                            is AgentCommand.TypeText -> AgentAccessibilityService.instance?.typeTextIntoInput(cmd.target, cmd.text)
-                            is AgentCommand.MakeCall -> telephonyHelper.dialCall(cmd.phone_number)
-                            is AgentCommand.SendSms -> telephonyHelper.sendSms(cmd.phone_number, cmd.message)
+                            is AgentCommand.OpenApp -> {
+                                val opened = appLauncher.openAppByName(cmd.app_name)
+                                badge = if (opened) "Opened ${cmd.app_name}" else "App not found"
+                            }
+                            is AgentCommand.Scroll -> {
+                                val scrolled = AgentAccessibilityService.instance?.scrollMedia(cmd.direction) ?: false
+                                badge = if (scrolled) "Scrolled ${cmd.direction.uppercase()}" else "Accessibility required"
+                            }
+                            is AgentCommand.Click -> {
+                                val clicked = AgentAccessibilityService.instance?.clickElement(cmd.target_text) ?: false
+                                badge = if (clicked) "Clicked ${cmd.target_text}" else "Element not found"
+                            }
+                            is AgentCommand.TypeText -> {
+                                val typed = AgentAccessibilityService.instance?.typeTextIntoInput(cmd.target, cmd.text) ?: false
+                                badge = if (typed) "Typed \"${cmd.text}\"" else "No input field focused"
+                            }
+                            is AgentCommand.MakeCall -> {
+                                telephonyHelper.dialCall(cmd.phone_number)
+                                badge = "Calling ${cmd.contact_name}"
+                            }
+                            is AgentCommand.SendSms -> {
+                                telephonyHelper.sendSms(cmd.phone_number, cmd.message)
+                                badge = "Sent SMS to ${cmd.contact_name}"
+                            }
+                            is AgentCommand.FindContact -> {
+                                val contacts = contactsHelper.searchContacts(cmd.name)
+                                if (contacts.isNotEmpty()) {
+                                    val single = contacts.first()
+                                    telephonyHelper.dialCall(single.phoneNumber)
+                                    badge = "Calling ${single.name}"
+                                }
+                            }
+                            is AgentCommand.InspectScreen -> {
+                                val sc = AgentAccessibilityService.instance?.inspectCurrentScreen() ?: "Screen unavailable"
+                                badge = "Watchdog Inspected"
+                            }
                             else -> {}
                         }
 
                         chatRepository.addMessage(
-                            ChatMessage(sender = MessageSender.AGENT, content = decision.assistant_response)
+                            ChatMessage(
+                                sender = MessageSender.AGENT,
+                                content = decision.assistant_response,
+                                actionBadge = badge
+                            )
                         )
                     }.onFailure { err ->
                         val errMsg = "Error from AI Studio: ${err.localizedMessage ?: "Unknown error"}. Please check your API key."
