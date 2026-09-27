@@ -1,8 +1,6 @@
 package com.editog.novaagent
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -10,7 +8,6 @@ import android.util.Log
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Box
@@ -22,18 +19,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.core.content.ContextCompat
 import com.editog.novaagent.service.DynamicIslandService
 import com.editog.novaagent.ui.navigation.AppNavHost
 import com.editog.novaagent.ui.theme.NovaAgentTheme
 
 class MainActivity : AppCompatActivity() {
-
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        Log.d("MainActivity", "Permissions updated: $permissions")
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Modern Android 15 Edge-to-Edge compliance
@@ -61,13 +51,12 @@ class MainActivity : AppCompatActivity() {
             Log.e("MainActivity", "Vector compat error", e)
         }
 
-        // Post-init checks on the window decor view so onCreate never blocks or hangs
+        // Safe background overlay check
         window.decorView.post {
             try {
-                requestNecessaryPermissions()
                 startDynamicIslandIfPermitted()
             } catch (e: Throwable) {
-                Log.e("MainActivity", "Post-launch check error", e)
+                Log.e("MainActivity", "Dynamic island init error", e)
             }
         }
 
@@ -95,29 +84,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-        }
-    }
-
-    private fun requestNecessaryPermissions() {
-        val permissions = mutableListOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.CALL_PHONE,
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.READ_CALL_LOG
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-
-        val ungranted = permissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-
-        if (ungranted.isNotEmpty()) {
-            permissionLauncher.launch(ungranted.toTypedArray())
         }
     }
 

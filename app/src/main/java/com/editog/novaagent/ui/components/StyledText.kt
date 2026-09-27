@@ -7,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -23,17 +22,6 @@ fun StyledText(
     fontWeight: FontWeight = FontWeight.Normal,
     customGlowColor: Color = Color(0xFF00F0FF)
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "text_anim")
-    val animatedOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 600f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "gradient_shift"
-    )
-
     when (style) {
         TextAnimationStyle.SOLID -> {
             Text(
@@ -59,6 +47,16 @@ fun StyledText(
         }
 
         TextAnimationStyle.AURORA -> {
+            val infiniteTransition = rememberInfiniteTransition(label = "aurora_anim")
+            val animatedOffset by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 600f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(4000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "aurora_shift"
+            )
             val brush = Brush.linearGradient(
                 colors = listOf(
                     Color(0xFF00FF66),
@@ -96,10 +94,20 @@ fun StyledText(
         }
 
         TextAnimationStyle.GLASS -> {
+            val infiniteTransition = rememberInfiniteTransition(label = "glass_anim")
+            val animatedOffset by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 400f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(3000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "glass_shift"
+            )
             val brush = Brush.linearGradient(
                 colors = listOf(Color(0xFFB0E0E6), Color(0xFF00F0FF), Color(0xFFE0FFFF)),
-                start = Offset((animatedOffset * 0.5f) % 200f, 0f),
-                end = Offset(((animatedOffset * 0.5f) % 200f) + 200f, 100f),
+                start = Offset(animatedOffset % 200f, 0f),
+                end = Offset((animatedOffset % 200f) + 200f, 100f),
                 tileMode = TileMode.Clamp
             )
             Text(
