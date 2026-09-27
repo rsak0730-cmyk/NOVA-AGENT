@@ -7,7 +7,9 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
@@ -27,11 +29,15 @@ class DynamicIslandService : Service() {
         var instance: DynamicIslandService? = null
             private set
 
+        private val mainHandler = Handler(Looper.getMainLooper())
+
         fun postAction(actionDescription: String) {
-            try {
-                instance?.showAction(actionDescription)
-            } catch (e: Throwable) {
-                Log.e("DynamicIslandService", "postAction error", e)
+            mainHandler.post {
+                try {
+                    instance?.showAction(actionDescription)
+                } catch (e: Throwable) {
+                    Log.e("DynamicIslandService", "postAction error", e)
+                }
             }
         }
     }
@@ -162,6 +168,8 @@ class DynamicIslandService : Service() {
 
     fun showAction(action: String) {
         val view = islandView as? android.widget.LinearLayout ?: return
+        val wm = windowManager ?: return
+
         for (i in 0 until view.childCount) {
             val child = view.getChildAt(i)
             if (child is TextView) {
@@ -169,7 +177,7 @@ class DynamicIslandService : Service() {
                 val lp = view.layoutParams as? WindowManager.LayoutParams
                 lp?.width = WindowManager.LayoutParams.WRAP_CONTENT
                 try {
-                    windowManager?.updateViewLayout(view, lp)
+                    wm.updateViewLayout(view, lp)
                 } catch (e: Throwable) {}
 
                 serviceScope.launch {
@@ -179,7 +187,7 @@ class DynamicIslandService : Service() {
                     val density = resources.displayMetrics.density
                     lp?.width = ((settings?.dynamicIslandWidth ?: 220) * density).toInt()
                     try {
-                        windowManager?.updateViewLayout(view, lp)
+                        wm.updateViewLayout(view, lp)
                     } catch (e: Throwable) {}
                 }
                 break

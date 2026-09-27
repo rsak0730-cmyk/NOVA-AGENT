@@ -1,7 +1,6 @@
 package com.editog.novaagent.service
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.os.Bundle
@@ -31,19 +30,7 @@ class AgentAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         _isServiceActive.value = true
-
-        try {
-            val info = serviceInfo ?: AccessibilityServiceInfo()
-            info.eventTypes = AccessibilityEvent.TYPES_ALL_MASK
-            info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
-                         AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
-                         AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
-            info.notificationTimeout = 100
-            serviceInfo = info
-        } catch (e: Throwable) {
-            Log.e("AgentAccessibility", "Error configuring serviceInfo", e)
-        }
+        Log.i("AgentAccessibility", "Nova Agent Accessibility Service connected successfully on Android 15+")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -82,11 +69,11 @@ class AgentAccessibilityService : AccessibilityService() {
         } catch (e: Throwable) {
             Log.e("AgentAccessibility", "Error in onKeyEvent", e)
         }
-        return super.onKeyEvent(event)
+        return false // Let system handle normal volume changes
     }
 
     /**
-     * Watchdog: Summarizes screen content for Gemini
+     * Watchdog: Summarizes screen content for Gemini AI Studio
      */
     fun inspectCurrentScreen(): String {
         return try {
@@ -101,8 +88,8 @@ class AgentAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun traverseNode(node: AccessibilityNodeInfo, builder: StringBuilder, depth: Int) {
-        if (depth > 8) return
+    private fun traverseNode(node: AccessibilityNodeInfo?, builder: StringBuilder, depth: Int) {
+        if (node == null || depth > 8) return
         try {
             val text = node.text?.toString()?.trim()
             val desc = node.contentDescription?.toString()?.trim()
@@ -121,9 +108,10 @@ class AgentAccessibilityService : AccessibilityService() {
             for (i in 0 until node.childCount) {
                 val child = node.getChild(i) ?: continue
                 traverseNode(child, builder, depth + 1)
-                child.recycle()
             }
-        } catch (e: Throwable) {}
+        } catch (e: Throwable) {
+            Log.e("AgentAccessibility", "Error traversing node", e)
+        }
     }
 
     /**

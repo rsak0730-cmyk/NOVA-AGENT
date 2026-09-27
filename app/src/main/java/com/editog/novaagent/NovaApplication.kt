@@ -30,27 +30,32 @@ class NovaApplication : Application() {
     val appLauncher: AppLauncher by lazy { AppLauncher(this) }
     val contactsHelper: ContactsHelper by lazy { ContactsHelper(this) }
     val telephonyHelper: TelephonyHelper by lazy { TelephonyHelper(this) }
-    val voiceManager: VoiceManager by lazy { VoiceManager(this) }
+    val voiceManager: VoiceManager by lazy {
+        VoiceManager(this).also { vm ->
+            vm.onSpeechFinalResult = { speechText ->
+                processGlobalCommand(speechText)
+            }
+        }
+    }
     val brainOrchestrator: AgentBrainOrchestrator by lazy { AgentBrainOrchestrator() }
 
-    private val appScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val appScope by lazy { CoroutineScope(Dispatchers.Main + SupervisorJob()) }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
 
+        // Global uncaught crash guard so unexpected thread crashes don't kill the app
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            Log.e("NovaApplication", "Uncaught exception on thread ${thread.name}", throwable)
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
+
         try {
             AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
         } catch (e: Throwable) {
             Log.e("NovaApplication", "Error enabling compat vectors", e)
-        }
-
-        try {
-            voiceManager.onSpeechFinalResult = { speechText ->
-                processGlobalCommand(speechText)
-            }
-        } catch (e: Throwable) {
-            Log.e("NovaApplication", "Error configuring voice callback", e)
         }
     }
 
@@ -154,7 +159,7 @@ class NovaApplication : Application() {
             // 2. AI BRAIN REASONING (Gemini / AI Studio)
             val config = apiConfigRepository.config.value
             if (config.apiKey.isBlank()) {
-                val noKeyMessage = "I heard you: \"$trimmed\". To enable full AI reasoning, please open Nova Agent and paste your Gemini API Studio key in the API Setup tab."
+                val noKeyMessage = "I heard: \"$trimmed\". To enable AI reasoning, please open Nova Agent and paste your Gemini API Studio key in the API Setup tab."
                 voiceManager.speak(noKeyMessage)
                 DynamicIslandService.postAction("API Key Required")
                 chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = noKeyMessage))
@@ -198,7 +203,7 @@ class NovaApplication : Application() {
     }
 
     companion object {
-        lateinit var instance: NovaApplication
+        var instance: NovaApplication? = null
             private set
     }
 }

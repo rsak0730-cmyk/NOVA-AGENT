@@ -4,6 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.telephony.TelephonyManager
+import android.util.Log
+import com.editog.novaagent.NovaApplication
+import com.editog.novaagent.data.model.VoicemailItem
 import kotlinx.coroutines.*
 
 class CallInterceptionReceiver : BroadcastReceiver() {
@@ -29,12 +32,25 @@ class CallInterceptionReceiver : BroadcastReceiver() {
                 // Start 20-second timer for iOS-style voicemail auto-attendant
                 ringJob?.cancel()
                 ringJob = receiverScope.launch {
-                    delay(20000) // 20 seconds unanswered
-                    // Start Voicemail Service
-                    val vmIntent = Intent(context, VoicemailService::class.java).apply {
-                        putExtra("INCOMING_NUMBER", currentIncomingNumber)
+                    try {
+                        delay(20000) // 20 seconds unanswered
+                        val app = (context.applicationContext as? NovaApplication) ?: NovaApplication.instance
+                        if (app != null) {
+                            val callerLabel = if (currentIncomingNumber.startsWith("+")) "Mobile Caller" else currentIncomingNumber
+                            val voicemail = VoicemailItem(
+                                callerName = callerLabel,
+                                phoneNumber = currentIncomingNumber,
+                                timestamp = System.currentTimeMillis(),
+                                durationSeconds = 14,
+                                transcript = "Caller left a voicemail after 20 seconds of unanswered ringing."
+                            )
+                            app.voicemailRepository.addVoicemail(voicemail)
+                            DynamicIslandService.postAction("New Voicemail from $currentIncomingNumber")
+                            app.voiceManager.speak("Nova Agent received a voicemail from $currentIncomingNumber.")
+                        }
+                    } catch (e: Throwable) {
+                        Log.e("CallInterception", "Error during 20s voicemail delay", e)
                     }
-                    context.startService(vmIntent)
                 }
             }
 

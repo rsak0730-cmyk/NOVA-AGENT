@@ -7,7 +7,9 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.WindowManager
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -31,44 +33,55 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Modern Android 15 Edge-to-Edge compliance
+        try {
+            enableEdgeToEdge()
+        } catch (e: Throwable) {
+            Log.e("MainActivity", "EdgeToEdge error", e)
+        }
+
         super.onCreate(savedInstanceState)
+
+        // Android 15 Display Cutout Safe Mode: avoids crash on modern display cutouts
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                window.attributes.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            } catch (e: Throwable) {
+                Log.e("MainActivity", "Cutout mode error", e)
+            }
+        }
+
         try {
             AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
         } catch (e: Throwable) {
             Log.e("MainActivity", "Vector compat error", e)
         }
 
-        val app = application as? NovaApplication
+        val app = (application as? NovaApplication) ?: NovaApplication.instance
 
-        try {
-            requestNecessaryPermissions()
-        } catch (e: Throwable) {
-            Log.e("MainActivity", "Error requesting permissions", e)
+        // Post-init checks on the window decor view so onCreate never blocks or hangs
+        window.decorView.post {
+            try {
+                requestNecessaryPermissions()
+                startDynamicIslandIfPermitted()
+            } catch (e: Throwable) {
+                Log.e("MainActivity", "Post-launch check error", e)
+            }
         }
 
-        try {
-            startDynamicIslandIfPermitted()
-        } catch (e: Throwable) {
-            Log.e("MainActivity", "Error starting dynamic island", e)
-        }
+        setContent {
+            val validApp = app ?: (application as NovaApplication)
+            val settings by validApp.settingsRepository.settings.collectAsState()
 
-        try {
-            setContent {
-                if (app != null) {
-                    val settings by app.settingsRepository.settings.collectAsState()
-
-                    NovaAgentTheme(themeColor = settings.themeColor) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = Color(0xFF090A0F)
-                        ) {
-                            AppNavHost(app = app, settings = settings)
-                        }
-                    }
+            NovaAgentTheme(themeColor = settings.themeColor) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color(0xFF090A0F)
+                ) {
+                    AppNavHost(app = validApp, settings = settings)
                 }
             }
-        } catch (e: Throwable) {
-            Log.e("MainActivity", "Error rendering Compose content", e)
         }
     }
 

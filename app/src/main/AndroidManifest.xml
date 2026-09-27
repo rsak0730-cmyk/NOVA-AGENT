@@ -8,7 +8,6 @@
 
     <!-- UI Overlay / Dynamic Island & Watchdog -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <!-- Telephony, Contacts & SMS -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -60,7 +59,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NovaAgent"
         android:usesCleartextTraffic="true"
-        tools:targetApi="31">
+        tools:targetApi="35">
 
         <activity
             android:name=".MainActivity"

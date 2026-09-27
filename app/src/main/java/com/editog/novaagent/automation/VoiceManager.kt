@@ -144,8 +144,6 @@ class VoiceManager(private val context: Context) {
                     if (text.isNotBlank()) {
                         _recognizedText.value = text
                         onSpeechFinalResult?.invoke(text)
-                        // Also trigger global command router directly
-                        NovaApplication.instance?.processGlobalCommand(text)
                     }
                 }
                 override fun onPartialResults(partialResults: Bundle?) {

@@ -5,7 +5,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -27,7 +26,7 @@ fun StyledText(
     val infiniteTransition = rememberInfiniteTransition(label = "text_anim")
     val animatedOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 1000f,
+        targetValue = 600f,
         animationSpec = infiniteRepeatable(
             animation = tween(4000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
@@ -68,9 +67,9 @@ fun StyledText(
                     Color(0xFFFFEA00),
                     Color(0xFF00FF66)
                 ),
-                start = Offset(animatedOffset, 0f),
-                end = Offset(animatedOffset + 500f, 200f),
-                tileMode = TileMode.Repeated
+                start = Offset(animatedOffset % 300f, 0f),
+                end = Offset((animatedOffset % 300f) + 300f, 150f),
+                tileMode = TileMode.Clamp
             )
             Text(
                 text = text,
@@ -99,9 +98,9 @@ fun StyledText(
         TextAnimationStyle.GLASS -> {
             val brush = Brush.linearGradient(
                 colors = listOf(Color(0xFFB0E0E6), Color(0xFF00F0FF), Color(0xFFE0FFFF)),
-                start = Offset(animatedOffset * 0.5f, 0f),
-                end = Offset(animatedOffset * 0.5f + 300f, 100f),
-                tileMode = TileMode.Mirror
+                start = Offset((animatedOffset * 0.5f) % 200f, 0f),
+                end = Offset(((animatedOffset * 0.5f) % 200f) + 200f, 100f),
+                tileMode = TileMode.Clamp
             )
             Text(
                 text = text,
@@ -182,10 +181,9 @@ fun StyledText(
                 text = text,
                 modifier = modifier,
                 style = TextStyle(
-                    color = Color.Transparent,
+                    color = Color.White,
                     fontSize = fontSize,
-                    fontWeight = fontWeight,
-                    drawStyle = Stroke(width = 2.5f, miter = 2f)
+                    fontWeight = fontWeight
                 )
             )
         }

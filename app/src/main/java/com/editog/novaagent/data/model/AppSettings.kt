@@ -59,7 +59,7 @@ enum class TextAnimationStyle(val displayName: String) {
 data class AppSettings(
     val themeColor: ThemeColor = ThemeColor.NEON_BLUE,
     val uiDesign: UiDesignStyle = UiDesignStyle.CYBERPUNK_UI,
-    val textAnimationStyle: TextAnimationStyle = TextAnimationStyle.AURORA,
+    val textAnimationStyle: TextAnimationStyle = TextAnimationStyle.SOLID,
     val customGlowColorHex: Long = 0xFF00F0FF,
     // Dynamic Island settings
     val dynamicIslandEnabled: Boolean = true,
