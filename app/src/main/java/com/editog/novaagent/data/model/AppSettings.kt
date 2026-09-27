@@ -2,6 +2,7 @@ package com.editog.novaagent.data.model
 
 import kotlinx.serialization.Serializable
 
+@Serializable
 enum class ThemeColor(val displayName: String, val primaryHex: Long, val accentHex: Long) {
     NEON_RED("Neon Red", 0xFFFF0055, 0xFFFF3377),
     NEON_BLUE("Neon Blue", 0xFF00F0FF, 0xFF0088FF),
@@ -13,6 +14,7 @@ enum class ThemeColor(val displayName: String, val primaryHex: Long, val accentH
     NEON_PURPLE("Neon Purple", 0xFFBF00FF, 0xFFE056FD)
 }
 
+@Serializable
 enum class UiDesignStyle(val displayName: String) {
     SOFT_UI("Soft UI"),
     BRUTALISM("Brutalism / Neobrutalism"),
@@ -39,6 +41,7 @@ enum class UiDesignStyle(val displayName: String) {
     INFLATED_UI("Inflated UI")
 }
 
+@Serializable
 enum class TextAnimationStyle(val displayName: String) {
     SOLID("Solid [White]"),
     GRADIENT("Gradient [2-4 Colors]"),

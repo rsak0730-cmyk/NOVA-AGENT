@@ -2,6 +2,7 @@ package com.editog.novaagent.data.model
 
 import kotlinx.serialization.Serializable
 
+@Serializable
 enum class MessageSender {
     USER,
     AGENT,

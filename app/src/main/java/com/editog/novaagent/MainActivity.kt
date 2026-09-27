@@ -34,38 +34,40 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         try {
             AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("MainActivity", "Vector compat error", e)
         }
 
-        val app = application as NovaApplication
+        val app = application as? NovaApplication
 
         try {
             requestNecessaryPermissions()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("MainActivity", "Error requesting permissions", e)
         }
 
         try {
             startDynamicIslandIfPermitted()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("MainActivity", "Error starting dynamic island", e)
         }
 
         try {
             setContent {
-                val settings by app.settingsRepository.settings.collectAsState()
+                if (app != null) {
+                    val settings by app.settingsRepository.settings.collectAsState()
 
-                NovaAgentTheme(themeColor = settings.themeColor) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color(0xFF090A0F)
-                    ) {
-                        AppNavHost(app = app, settings = settings)
+                    NovaAgentTheme(themeColor = settings.themeColor) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color(0xFF090A0F)
+                        ) {
+                            AppNavHost(app = app, settings = settings)
+                        }
                     }
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("MainActivity", "Error rendering Compose content", e)
         }
     }
@@ -94,9 +96,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startDynamicIslandIfPermitted() {
-        if (Settings.canDrawOverlays(this)) {
-            val intent = Intent(this, DynamicIslandService::class.java)
-            startService(intent)
+        try {
+            if (Settings.canDrawOverlays(this)) {
+                val intent = Intent(this, DynamicIslandService::class.java)
+                startService(intent)
+            }
+        } catch (e: Throwable) {
+            Log.e("MainActivity", "Overlay start error", e)
         }
     }
 
@@ -104,7 +110,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         try {
             startDynamicIslandIfPermitted()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("MainActivity", "Error onResume dynamic island start", e)
         }
     }

@@ -2,6 +2,7 @@ package com.editog.novaagent.data.model
 
 import kotlinx.serialization.Serializable
 
+@Serializable
 enum class ApiProvider(val displayName: String, val defaultBaseUrl: String, val defaultModel: String) {
     GEMINI("Google Gemini (AI Studio)", "https://generativelanguage.googleapis.com", "gemini-1.5-flash"),
     OPENROUTER("OpenRouter", "https://openrouter.ai/api/v1", "meta-llama/llama-3.1-8b-instruct:free"),

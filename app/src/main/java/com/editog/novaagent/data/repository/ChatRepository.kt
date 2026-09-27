@@ -2,6 +2,7 @@ package com.editog.novaagent.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.editog.novaagent.data.model.ChatMessage
 import com.editog.novaagent.data.model.MessageSender
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,20 +13,21 @@ import kotlinx.serialization.json.Json
 
 class ChatRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("nova_chat_history", Context.MODE_PRIVATE)
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
 
-    private val _messages = MutableStateFlow<List<ChatMessage>>(loadMessages())
+    private val _messages = MutableStateFlow<List<ChatMessage>>(loadMessagesSafely())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
-    private fun loadMessages(): List<ChatMessage> {
-        val raw = prefs.getString("chat_messages_json", null)
-        return if (raw != null) {
-            try {
+    private fun loadMessagesSafely(): List<ChatMessage> {
+        return try {
+            val raw = prefs.getString("chat_messages_json", null)
+            if (!raw.isNullOrBlank()) {
                 json.decodeFromString<List<ChatMessage>>(raw)
-            } catch (e: Exception) {
+            } else {
                 defaultWelcomeMessages()
             }
-        } else {
+        } catch (e: Throwable) {
+            Log.e("ChatRepository", "Error decoding chat messages", e)
             defaultWelcomeMessages()
         }
     }
@@ -40,15 +42,23 @@ class ChatRepository(context: Context) {
     }
 
     fun addMessage(message: ChatMessage) {
-        val updated = _messages.value + message
-        _messages.value = updated
-        persist(updated)
+        try {
+            val updated = _messages.value + message
+            _messages.value = updated
+            persist(updated)
+        } catch (e: Throwable) {
+            Log.e("ChatRepository", "Error adding message", e)
+        }
     }
 
     fun updateMessage(id: String, transform: (ChatMessage) -> ChatMessage) {
-        val updated = _messages.value.map { if (it.id == id) transform(it) else it }
-        _messages.value = updated
-        persist(updated)
+        try {
+            val updated = _messages.value.map { if (it.id == id) transform(it) else it }
+            _messages.value = updated
+            persist(updated)
+        } catch (e: Throwable) {
+            Log.e("ChatRepository", "Error updating message", e)
+        }
     }
 
     fun clearChat() {
@@ -58,6 +68,10 @@ class ChatRepository(context: Context) {
     }
 
     private fun persist(list: List<ChatMessage>) {
-        prefs.edit().putString("chat_messages_json", json.encodeToString(list)).apply()
+        try {
+            prefs.edit().putString("chat_messages_json", json.encodeToString(list)).apply()
+        } catch (e: Throwable) {
+            Log.e("ChatRepository", "Error persisting messages", e)
+        }
     }
 }

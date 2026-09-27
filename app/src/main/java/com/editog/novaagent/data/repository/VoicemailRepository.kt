@@ -2,6 +2,7 @@ package com.editog.novaagent.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.editog.novaagent.data.model.VoicemailItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,20 +12,21 @@ import kotlinx.serialization.json.Json
 
 class VoicemailRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("nova_voicemails", Context.MODE_PRIVATE)
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
 
-    private val _voicemails = MutableStateFlow<List<VoicemailItem>>(loadVoicemails())
+    private val _voicemails = MutableStateFlow<List<VoicemailItem>>(loadVoicemailsSafely())
     val voicemails: StateFlow<List<VoicemailItem>> = _voicemails.asStateFlow()
 
-    private fun loadVoicemails(): List<VoicemailItem> {
-        val raw = prefs.getString("voicemails_json", null)
-        return if (raw != null) {
-            try {
+    private fun loadVoicemailsSafely(): List<VoicemailItem> {
+        return try {
+            val raw = prefs.getString("voicemails_json", null)
+            if (!raw.isNullOrBlank()) {
                 json.decodeFromString<List<VoicemailItem>>(raw)
-            } catch (e: Exception) {
+            } else {
                 sampleVoicemails()
             }
-        } else {
+        } catch (e: Throwable) {
+            Log.e("VoicemailRepository", "Error decoding voicemails", e)
             sampleVoicemails()
         }
     }
@@ -49,9 +51,13 @@ class VoicemailRepository(context: Context) {
     }
 
     fun addVoicemail(item: VoicemailItem) {
-        val updated = listOf(item) + _voicemails.value
-        _voicemails.value = updated
-        persist(updated)
+        try {
+            val updated = listOf(item) + _voicemails.value
+            _voicemails.value = updated
+            persist(updated)
+        } catch (e: Throwable) {
+            Log.e("VoicemailRepository", "Error adding voicemail", e)
+        }
     }
 
     fun togglePlayback(id: String) {
@@ -59,7 +65,7 @@ class VoicemailRepository(context: Context) {
             if (item.id == id) {
                 item.copy(isPlaying = !item.isPlaying)
             } else {
-                item.copy(isPlaying = false) // only 1 plays at once
+                item.copy(isPlaying = false)
             }
         }
         _voicemails.value = updated
@@ -71,12 +77,20 @@ class VoicemailRepository(context: Context) {
     }
 
     fun deleteVoicemail(id: String) {
-        val updated = _voicemails.value.filter { it.id != id }
-        _voicemails.value = updated
-        persist(updated)
+        try {
+            val updated = _voicemails.value.filter { it.id != id }
+            _voicemails.value = updated
+            persist(updated)
+        } catch (e: Throwable) {
+            Log.e("VoicemailRepository", "Error deleting voicemail", e)
+        }
     }
 
     private fun persist(list: List<VoicemailItem>) {
-        prefs.edit().putString("voicemails_json", json.encodeToString(list)).apply()
+        try {
+            prefs.edit().putString("voicemails_json", json.encodeToString(list)).apply()
+        } catch (e: Throwable) {
+            Log.e("VoicemailRepository", "Error persisting voicemails", e)
+        }
     }
 }
