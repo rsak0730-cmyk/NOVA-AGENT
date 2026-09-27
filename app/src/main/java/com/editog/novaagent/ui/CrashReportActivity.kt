@@ -35,7 +35,7 @@ class CrashReportActivity : Activity() {
         val versionName = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "Unknown"
         } catch (_: Throwable) {
-            "1.0.x"
+            "2.0.0"
         }
 
         val density = resources.displayMetrics.density
@@ -139,7 +139,7 @@ class CrashReportActivity : Activity() {
 
         // Update to Latest APK Button
         val updateBtn = Button(this).apply {
-            text = "Download Latest Update APK (v1.0.9)"
+            text = "Download Latest Update APK (v2.0.0)"
             setTextColor(Color.BLACK)
             typeface = Typeface.DEFAULT_BOLD
             val btnBg = GradientDrawable().apply {
