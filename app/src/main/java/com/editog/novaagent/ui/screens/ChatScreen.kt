@@ -69,8 +69,12 @@ fun ChatScreen(
     }
 
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+        if (messages.size > 1) {
+            try {
+                listState.animateScrollToItem(messages.size - 1)
+            } catch (e: Throwable) {
+                // Ignore initial scroll bounds
+            }
         }
     }
 

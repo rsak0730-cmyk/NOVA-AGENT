@@ -22,13 +22,13 @@ import com.editog.novaagent.ui.theme.NovaAgentTheme
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
         try {
             enableEdgeToEdge()
         } catch (e: Throwable) {
             Log.e("MainActivity", "EdgeToEdge error", e)
         }
-
-        super.onCreate(savedInstanceState)
 
         // Samsung / Android 15 Display Cutout Safe Mode
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -40,30 +40,34 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        setContent {
-            val validApp = (application as? NovaApplication) ?: NovaApplication.instance
+        try {
+            setContent {
+                val validApp = (application as? NovaApplication) ?: NovaApplication.instance
 
-            if (validApp != null) {
-                val settings by validApp.settingsRepository.settings.collectAsState()
+                if (validApp != null) {
+                    val settings by validApp.settingsRepository.settings.collectAsState()
 
-                NovaAgentTheme(themeColor = settings.themeColor) {
+                    NovaAgentTheme(themeColor = settings.themeColor) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color(0xFF090A0F)
+                        ) {
+                            AppNavHost(app = validApp, settings = settings)
+                        }
+                    }
+                } else {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = Color(0xFF090A0F)
                     ) {
-                        AppNavHost(app = validApp, settings = settings)
-                    }
-                }
-            } else {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF090A0F)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFF00F0FF))
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Color(0xFF00F0FF))
+                        }
                     }
                 }
             }
+        } catch (e: Throwable) {
+            Log.e("MainActivity", "Fatal setContent error", e)
         }
     }
 }
