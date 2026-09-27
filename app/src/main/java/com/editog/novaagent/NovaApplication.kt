@@ -2,7 +2,6 @@ package com.editog.novaagent
 
 import android.app.Application
 import android.util.Log
-import androidx.appcompat.app.AppCompatDelegate
 import com.editog.novaagent.automation.AppLauncher
 import com.editog.novaagent.automation.ContactsHelper
 import com.editog.novaagent.automation.TelephonyHelper
@@ -49,17 +48,11 @@ class NovaApplication : Application() {
         super.onCreate()
         instance = this
 
-        // Global uncaught crash guard so unexpected thread crashes don't kill the app
+        // Global uncaught crash guard
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e("NovaApplication", "Uncaught exception on thread ${thread.name}", throwable)
             defaultHandler?.uncaughtException(thread, throwable)
-        }
-
-        try {
-            AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
-        } catch (e: Throwable) {
-            Log.e("NovaApplication", "Error enabling compat vectors", e)
         }
     }
 

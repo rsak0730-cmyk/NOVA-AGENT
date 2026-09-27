@@ -1,15 +1,12 @@
 package com.editog.novaagent
 
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,14 +16,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.editog.novaagent.service.DynamicIslandService
 import com.editog.novaagent.ui.navigation.AppNavHost
 import com.editog.novaagent.ui.theme.NovaAgentTheme
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Modern Android 15 Edge-to-Edge compliance
         try {
             enableEdgeToEdge()
         } catch (e: Throwable) {
@@ -35,28 +30,13 @@ class MainActivity : AppCompatActivity() {
 
         super.onCreate(savedInstanceState)
 
-        // Android 15 Display Cutout Safe Mode: avoids crash on modern display cutouts
+        // Samsung / Android 15 Display Cutout Safe Mode
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
                 window.attributes.layoutInDisplayCutoutMode =
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             } catch (e: Throwable) {
                 Log.e("MainActivity", "Cutout mode error", e)
-            }
-        }
-
-        try {
-            AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
-        } catch (e: Throwable) {
-            Log.e("MainActivity", "Vector compat error", e)
-        }
-
-        // Safe background overlay check
-        window.decorView.post {
-            try {
-                startDynamicIslandIfPermitted()
-            } catch (e: Throwable) {
-                Log.e("MainActivity", "Dynamic island init error", e)
             }
         }
 
@@ -84,26 +64,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-        }
-    }
-
-    private fun startDynamicIslandIfPermitted() {
-        try {
-            if (Settings.canDrawOverlays(this)) {
-                val intent = Intent(this, DynamicIslandService::class.java)
-                startService(intent)
-            }
-        } catch (e: Throwable) {
-            Log.e("MainActivity", "Overlay start error", e)
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        try {
-            startDynamicIslandIfPermitted()
-        } catch (e: Throwable) {
-            Log.e("MainActivity", "Error onResume dynamic island start", e)
         }
     }
 }
