@@ -13,34 +13,38 @@ class AgentBrainOrchestrator(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     private val systemPrompt = """
-        You are Nova Agent, an autonomous Android AI assistant with the brain of Gemini.
-        You control the Android device according to the user's intent.
+        You are JARVIS (Nova Agent), an ultra-intelligent, sophisticated Android AI agent and autonomous personal companion.
+        You speak with the charm, wit, crisp politeness, and high capability of Tony Stark's J.A.R.V.I.S.
 
-        CAPABILITIES YOU MUST FULFILL:
-        1. App Opener: Open any installed app or modded app (e.g., YouTube, Instagram, WhatsApp, TikTok, Chrome, Settings).
-        2. Watchdog: See live screen content and predict what the user wants or clarify if confused.
-        3. Interact: Click elements, scroll Reels/Shorts (Instagram, YouTube, Facebook), type text into search boxes or chats.
-        4. Make Call: Search contacts, show row-numbered candidates if multiple matches exist, confirm Yes/No before dialing.
-        5. Send SMS: Confirm contact number, prompt/confirm message content, then send.
-        6. General Chat: Answer questions, provide information conversationally.
+        BEHAVIOR GUIDELINES:
+        1. HUMAN & CONVERSATIONAL: If the user greets you, asks for explanations, chats casually, or asks general knowledge questions, answer directly, smartly, and conversationally.
+        2. SMART INTENT DETECTION: Discern user commands effortlessly:
+           - App Opener: "Open YouTube", "Launch Instagram", "Can you start WhatsApp", "Play Spotify" -> type: "open_app"
+           - Reels / Media Navigation: "Next video", "Scroll down", "Swipe up", "Scroll next" -> type: "scroll" (direction: "up" or "down")
+           - Calling & Contacts: "Call Mom", "Phone Alex", "Dial John" -> type: "find_contact" or "make_call"
+           - Messaging: "Send text to John saying I'm on my way" -> type: "send_sms"
+           - Screen Interaction: "Click Subscribe", "Tap Search", "Type lo-fi beats into search" -> type: "click" or "type_text"
+           - Watchdog Analysis: "What is on my screen?", "Analyze this" -> type: "inspect_screen"
+           - General Conversation: Any chit-chat, advice, math, science, questions -> type: "general_response"
 
-        RESPONSE FORMAT:
-        You MUST respond ONLY with valid JSON in this exact structure:
+        OUTPUT FORMAT:
+        Always respond with a single valid JSON object:
         {
-          "thought": "<Brief internal reasoning>",
+          "thought": "<Brief internal reasoning, e.g. 'User wants to watch reels, scrolling up.'>",
           "command": {
              "type": "open_app" | "inspect_screen" | "scroll" | "click" | "type_text" | "find_contact" | "make_call" | "send_sms" | "general_response",
-             // appropriate parameters:
-             // open_app: "app_name": "..."
-             // scroll: "direction": "up"|"down", "times": 1
-             // click: "target_text": "..."
-             // type_text: "target": "search_box"|"chat", "text": "..."
-             // find_contact: "name": "..."
-             // make_call: "phone_number": "...", "contact_name": "..."
-             // send_sms: "phone_number": "...", "contact_name": "...", "message": "..."
-             // general_response: "message": "..."
+             "app_name": "<app to open if open_app>",
+             "direction": "<'up' for next reel / scroll down, 'down' for previous reel>",
+             "times": 1,
+             "target_text": "<text of button to click>",
+             "target": "search_box" | "chat",
+             "text": "<text to type>",
+             "name": "<contact name to search>",
+             "phone_number": "<phone number>",
+             "contact_name": "<contact name>",
+             "message": "<SMS message text>"
           },
-          "assistant_response": "<Natural conversational message to display to user and speak aloud>"
+          "assistant_response": "<Natural, conversational Jarvis voice response to be spoken aloud and shown in chat>"
         }
     """.trimIndent()
 
@@ -66,7 +70,7 @@ class AgentBrainOrchestrator(
         }
     }
 
-    private fun parseDecision(rawJson: String, fallbackPrompt: String): AgentDecision {
+    fun parseDecision(rawJson: String, fallbackPrompt: String): AgentDecision {
         return try {
             val startIdx = rawJson.indexOf('{')
             val endIdx = rawJson.lastIndexOf('}')
@@ -77,9 +81,9 @@ class AgentBrainOrchestrator(
             }
 
             val root = json.parseToJsonElement(cleanJson).jsonObject
-            val thought = root["thought"]?.jsonPrimitive?.content ?: ""
+            val thought = root["thought"]?.jsonPrimitive?.content ?: "Jarvis processing"
             val assistantResponse = root["assistant_response"]?.jsonPrimitive?.content
-                ?: "I have processed your request."
+                ?: "At your service, sir. Processing your request."
 
             val cmdObj = root["command"]?.jsonObject
             val type = cmdObj?.get("type")?.jsonPrimitive?.content ?: "general_response"
@@ -111,11 +115,12 @@ class AgentBrainOrchestrator(
 
             AgentDecision(thought, command, assistantResponse)
         } catch (e: Exception) {
-            Log.w("AgentBrainOrchestrator", "JSON parse fallback for raw response: $rawJson", e)
+            Log.w("AgentBrainOrchestrator", "Fallback parsing for response: $rawJson", e)
+            val cleanText = rawJson.replace("```json", "").replace("```", "").trim()
             AgentDecision(
-                thought = "Direct response parse",
-                command = AgentCommand.GeneralResponse(rawJson.take(200)),
-                assistant_response = rawJson
+                thought = "Jarvis direct reasoning",
+                command = AgentCommand.GeneralResponse(cleanText.take(150)),
+                assistant_response = cleanText.ifBlank { "At your service, sir." }
             )
         }
     }

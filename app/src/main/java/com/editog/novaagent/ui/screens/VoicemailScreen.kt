@@ -1,19 +1,17 @@
 package com.editog.novaagent.ui.screens
 
-import android.content.Intent
-import androidx.compose.animation.*
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.painterResource
-import com.editog.novaagent.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,16 +19,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.editog.novaagent.NovaApplication
+import com.editog.novaagent.R
 import com.editog.novaagent.data.model.AppSettings
 import com.editog.novaagent.data.model.VoicemailItem
 import com.editog.novaagent.service.DynamicIslandService
-import com.editog.novaagent.service.VoicemailService
 import com.editog.novaagent.ui.components.StyledText
 import com.editog.novaagent.ui.theme.applyUiStyle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -40,17 +42,32 @@ fun VoicemailScreen(
     settings: AppSettings
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val voicemails by app.voicemailRepository.voicemails.collectAsState()
-    val primaryColor = Color(settings.themeColor.primaryHex)
+    val savedUserPhone by app.voicemailRepository.userPhoneNumber.collectAsState()
 
-    val dateFormat = remember { SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault()) }
+    var userPhoneInput by remember(savedUserPhone) { mutableStateOf(savedUserPhone) }
+    var isPhoneSavedFeedback by remember { mutableStateOf(false) }
+    var isSimulating by remember { mutableStateOf(false) }
+
+    val primaryColor = Color(settings.themeColor.primaryHex)
+    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault()) }
+
+    val hasPhoneStatePermission = remember(Unit) {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ -> }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF090A0F))
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
+        // Top Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -60,7 +77,7 @@ fun VoicemailScreen(
                 StyledText(
                     text = "Live Voicemail",
                     style = settings.textAnimationStyle,
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     customGlowColor = primaryColor
                 )
@@ -71,50 +88,179 @@ fun VoicemailScreen(
                 )
             }
 
-            // Test Simulation Button
-            FilledTonalButton(
+            // Simulate 20s Call Button
+            Button(
                 onClick = {
-                    val intent = Intent(context, VoicemailService::class.java).apply {
-                        putExtra("INCOMING_NUMBER", "+1 (555) 789-0142")
+                    if (isSimulating) return@Button
+                    isSimulating = true
+                    coroutineScope.launch {
+                        DynamicIslandService.postAction("📞 Ringing: Alex (5s / 20s)")
+                        delay(4000)
+                        DynamicIslandService.postAction("📞 Ringing: Alex (15s / 20s)")
+                        delay(4000)
+                        DynamicIslandService.postAction("🎙️ Agent Answering Voicemail...")
+                        app.voiceManager.speak("The owner is currently unavailable. Please leave a voicemail after the tone.")
+                        delay(5000)
+
+                        val newVoicemail = VoicemailItem(
+                            callerName = "Alex Rivera",
+                            phoneNumber = if (savedUserPhone.isNotBlank()) "+1 (555) 234-8901" else "+1 (555) 234-8901",
+                            timestamp = System.currentTimeMillis(),
+                            durationSeconds = 18,
+                            transcript = "Hey! I called your phone number but it rang for 20 seconds. Calling to confirm our plans for tonight. Let me know if that works!"
+                        )
+                        app.voicemailRepository.addVoicemail(newVoicemail)
+                        DynamicIslandService.postAction("New Voicemail from Alex")
+                        isSimulating = false
                     }
-                    context.startService(intent)
                 },
-                colors = ButtonDefaults.filledTonalButtonColors(containerColor = primaryColor.copy(alpha = 0.2f)),
-                shape = RoundedCornerShape(8.dp)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSimulating) Color(0xFFFF0055) else Color(0xFF1E2232),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                Text("Simulate 20s Call", color = primaryColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (isSimulating) "Simulating 20s..." else "Simulate 20s Call",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Info Banner
+        // Real User Mobile Number Card
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF131722), RoundedCornerShape(12.dp))
-                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(12.dp))
-                .padding(12.dp)
+                .applyUiStyle(settings.uiDesign, primaryColor)
+                .padding(14.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_voicemail),
-                    contentDescription = null,
-                    tint = primaryColor,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "My Active Mobile Line",
+                        color = primaryColor,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+
+                    Surface(
+                        color = Color(0x3300FF66),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = if (savedUserPhone.isNotBlank()) "🟢 AI Guardian Active" else "⚪ Add Your Number",
+                            color = if (savedUserPhone.isNotBlank()) Color(0xFF00FF66) else Color(0xFFCBD5E1),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text(
-                    text = "If an incoming call rings for 20 seconds unanswered, Nova Agent answers automatically, asks the caller to record their voicemail, and transcribes it here.",
-                    color = Color(0xFFCBD5E1),
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp
+                    text = "Add your real phone number below. If any incoming call rings for 20 seconds without you picking up, Nova Agent talks to the caller, asks them to leave a voicemail, and transcribes it here.",
+                    color = Color(0xFF94A3B8),
+                    fontSize = 11.5.sp,
+                    lineHeight = 15.sp
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = userPhoneInput,
+                        onValueChange = {
+                            userPhoneInput = it
+                            isPhoneSavedFeedback = false
+                        },
+                        placeholder = {
+                            Text(
+                                text = "e.g. +1 555-0199 or your SIM #",
+                                color = Color(0xFF64748B),
+                                fontSize = 12.sp
+                            )
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            unfocusedBorderColor = Color(0x33FFFFFF),
+                            focusedContainerColor = Color(0xFF0E111A),
+                            unfocusedContainerColor = Color(0xFF0E111A),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = {
+                            app.voicemailRepository.saveUserPhoneNumber(userPhoneInput)
+                            isPhoneSavedFeedback = true
+                            DynamicIslandService.postAction("Line Saved: ${userPhoneInput.take(16)}")
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryColor,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.height(46.dp)
+                    ) {
+                        Text(
+                            text = if (isPhoneSavedFeedback) "Saved ✓" else "Save Line",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                // Permission warning if telephony is not granted
+                if (!hasPhoneStatePermission) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            permissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.READ_PHONE_STATE,
+                                    Manifest.permission.READ_CALL_LOG,
+                                    Manifest.permission.RECORD_AUDIO
+                                )
+                            )
+                        },
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text(
+                            text = "⚠️ Tap to grant phone & call detection permissions",
+                            color = Color(0xFFFFEA00),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
+        // Voicemails List
         if (voicemails.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -122,12 +268,22 @@ fun VoicemailScreen(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "No voicemails yet.\nUnanswered calls (20s) will be logged here.",
-                    color = Color(0xFF6B7280),
-                    fontSize = 14.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_voicemail),
+                        contentDescription = null,
+                        tint = Color(0xFF475569),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "No voicemails yet.\nUnanswered calls (20s) to your mobile line will appear here.",
+                        color = Color(0xFF6B7280),
+                        fontSize = 13.5.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        lineHeight = 18.sp
+                    )
+                }
             }
         } else {
             LazyColumn(

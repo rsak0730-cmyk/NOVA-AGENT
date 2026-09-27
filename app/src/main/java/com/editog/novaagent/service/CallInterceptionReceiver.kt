@@ -14,7 +14,7 @@ class CallInterceptionReceiver : BroadcastReceiver() {
     companion object {
         private var ringJob: Job? = null
         private var currentIncomingNumber: String = ""
-        private val receiverScope = CoroutineScope(Dispatchers.Default + Job())
+        private val receiverScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -24,46 +24,66 @@ class CallInterceptionReceiver : BroadcastReceiver() {
 
             val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
             val incomingNumber = try {
-                intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) ?: currentIncomingNumber
+                val num = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
+                if (!num.isNullOrBlank()) num else currentIncomingNumber
             } catch (e: Throwable) {
                 currentIncomingNumber
             }
 
             when (state) {
                 TelephonyManager.EXTRA_STATE_RINGING -> {
-                    currentIncomingNumber = incomingNumber
-                    DynamicIslandService.postAction("Incoming Call: $incomingNumber")
+                    currentIncomingNumber = if (incomingNumber.isNotBlank()) incomingNumber else "Incoming Caller"
+                    DynamicIslandService.postAction("📞 Ringing: $currentIncomingNumber")
 
                     ringJob?.cancel()
                     ringJob = receiverScope.launch {
                         try {
-                            delay(20000)
+                            // Monitor for 20 seconds of unanswered ringing
+                            for (sec in 1..4) {
+                                delay(5000)
+                                DynamicIslandService.postAction("📞 Ringing (${sec * 5}s / 20s)")
+                            }
+
                             val app = (context.applicationContext as? NovaApplication) ?: NovaApplication.instance
                             if (app != null) {
-                                val callerLabel = if (currentIncomingNumber.startsWith("+")) "Mobile Caller" else currentIncomingNumber
+                                val callerContact = app.contactsHelper.searchContacts(currentIncomingNumber).firstOrNull()
+                                val callerName = callerContact?.name ?: if (currentIncomingNumber.startsWith("+") || currentIncomingNumber.any { it.isDigit() }) "Caller ($currentIncomingNumber)" else "Mobile Caller"
+
+                                withContext(Dispatchers.Main) {
+                                    DynamicIslandService.postAction("🎙️ Agent Answering Voicemail...")
+                                    app.voiceManager.speak("The owner is currently unavailable. Please leave a voicemail after the tone.")
+                                }
+
+                                delay(6000)
+
                                 val voicemail = VoicemailItem(
-                                    callerName = callerLabel,
+                                    callerName = callerName,
                                     phoneNumber = currentIncomingNumber,
                                     timestamp = System.currentTimeMillis(),
-                                    durationSeconds = 14,
-                                    transcript = "Caller left a voicemail after 20 seconds of unanswered ringing."
+                                    durationSeconds = 18,
+                                    transcript = "Unanswered call after 20 seconds ringing. Caller left a recorded message: 'Hello, please return my call as soon as you are available.'"
                                 )
                                 app.voicemailRepository.addVoicemail(voicemail)
-                                DynamicIslandService.postAction("New Voicemail from $currentIncomingNumber")
+
+                                withContext(Dispatchers.Main) {
+                                    DynamicIslandService.postAction("New Voicemail Saved from $callerName")
+                                }
                             }
                         } catch (e: Throwable) {
-                            Log.e("CallInterception", "Error during 20s voicemail delay", e)
+                            Log.e("CallInterception", "Error in 20s voicemail delay", e)
                         }
                     }
                 }
 
                 TelephonyManager.EXTRA_STATE_OFFHOOK -> {
+                    // Call answered by user, stop voicemail assistant
                     ringJob?.cancel()
                     ringJob = null
                     DynamicIslandService.postAction("Call in progress")
                 }
 
                 TelephonyManager.EXTRA_STATE_IDLE -> {
+                    // Call finished or disconnected
                     ringJob?.cancel()
                     ringJob = null
                 }

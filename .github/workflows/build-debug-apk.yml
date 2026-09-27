@@ -54,18 +54,27 @@ jobs:
       - name: Prepare Direct APK for Release
         run: |
           mkdir -p release-apk
-          find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} release-apk/NovaAgent-v2.0.0.apk \;
+          find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} release-apk/NovaAgent-v2.0.1.apk \;
 
       - name: Create or Update GitHub Release with Direct APK
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v2.0.0
-          name: "Nova Agent v2.0.0 - Direct APK Download"
+          tag_name: v2.0.1
+          name: "Nova Agent v2.0.1 - Direct APK Download"
           body: |
-            ### 🚀 Nova Agent v2.0.0 (Direct Install APK)
+            ### 🚀 Nova Agent v2.0.1 (Direct Install APK)
             **Direct APK Download (No unzipping required)**
-            Download `NovaAgent-v2.0.0.apk` below directly to your device and tap it to install.
-          files: release-apk/NovaAgent-v2.0.0.apk
+            Download `NovaAgent-v2.0.1.apk` below directly to your device and tap it to install.
+            
+            #### What's New in v2.0.1:
+            - **Persistent Floating Dynamic Island**: Always visible over all apps like iOS (`SYSTEM_ALERT_WINDOW`). Displays live agent actions.
+            - **Tap Island to Listen**: Single-tap the floating island pill anytime to start/stop voice listening with Jarvis. Long-press opens Nova Agent.
+            - **Real-Time Island Settings**: Geometry, X/Y offsets, width, height, corner radius, and animation physics adjust the floating overlay immediately.
+            - **Jarvis Conversational Intelligence**: Natural conversational understanding with automatic model fallback (supporting `gemini-3.1-flash-lite`, `gemini-2.0-flash`, etc.) and offline Jarvis voice commands.
+            - **Dynamic Keyboard / IME Insets in Chat**: Chat typing bar moves up smoothly above the keyboard so you can see what you are typing.
+            - **Shimmer Text Animations**: All 10 text styling effects now feature continuous animated light-sweep shimmer.
+            - **Live Mobile Voicemail Guardian**: Add your real mobile phone number. Incoming calls ringing > 20s unanswered are automatically answered by Nova Agent, prompting callers to leave a voicemail and recording/transcribing them.
+          files: release-apk/NovaAgent-v2.0.1.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

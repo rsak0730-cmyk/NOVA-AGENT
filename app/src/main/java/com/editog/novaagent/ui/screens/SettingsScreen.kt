@@ -1,6 +1,7 @@
 package com.editog.novaagent.ui.screens
 
 import android.content.Intent
+import android.os.Build
 import android.net.Uri
 import android.provider.Settings
 import android.util.Log
@@ -206,7 +207,12 @@ fun SettingsScreen(
                                     if (Settings.canDrawOverlays(context)) {
                                         app.settingsRepository.updateSettings(currentSettings.copy(dynamicIslandEnabled = true))
                                         try {
-                                            context.startService(Intent(context, DynamicIslandService::class.java))
+                                            val sIntent = Intent(context, DynamicIslandService::class.java)
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                                context.startForegroundService(sIntent)
+                                            } else {
+                                                context.startService(sIntent)
+                                            }
                                         } catch (e: Throwable) {
                                             Log.e("SettingsScreen", "Failed to start DynamicIslandService", e)
                                         }
@@ -538,6 +544,45 @@ fun SettingsScreen(
                     valueRange = 150f..800f,
                     colors = SliderDefaults.colors(thumbColor = primaryColor, activeTrackColor = primaryColor)
                 )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            app.settingsRepository.updateSettings(
+                                currentSettings.copy(
+                                    dynamicIslandX = 0,
+                                    dynamicIslandY = 40,
+                                    dynamicIslandWidth = 220,
+                                    dynamicIslandHeight = 48,
+                                    dynamicIslandCornerRadius = 24
+                                )
+                            )
+                            DynamicIslandService.postAction("Island Centered")
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = primaryColor),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, primaryColor.copy(alpha = 0.5f))
+                    ) {
+                        Text("Center Island", fontSize = 12.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            DynamicIslandService.postAction("Testing Live Island")
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryColor, contentColor = Color.Black)
+                    ) {
+                        Text("Test Live Island", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }

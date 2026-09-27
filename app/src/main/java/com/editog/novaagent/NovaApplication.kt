@@ -2,7 +2,10 @@ package com.editog.novaagent
 
 import android.app.Application
 import android.content.Intent
-import android.os.Looper
+import android.content.IntentFilter
+import android.os.Build
+import android.provider.Settings
+import android.telephony.TelephonyManager
 import android.util.Log
 import com.editog.novaagent.automation.AppLauncher
 import com.editog.novaagent.automation.ContactsHelper
@@ -15,6 +18,7 @@ import com.editog.novaagent.data.repository.ChatRepository
 import com.editog.novaagent.data.repository.SettingsRepository
 import com.editog.novaagent.data.repository.VoicemailRepository
 import com.editog.novaagent.service.AgentAccessibilityService
+import com.editog.novaagent.service.CallInterceptionReceiver
 import com.editog.novaagent.service.DynamicIslandService
 import com.editog.novaagent.ui.CrashReportActivity
 import kotlinx.coroutines.CoroutineScope
@@ -42,11 +46,14 @@ class NovaApplication : Application() {
     val brainOrchestrator: AgentBrainOrchestrator by lazy { AgentBrainOrchestrator() }
 
     private val appScope by lazy { CoroutineScope(Dispatchers.Main + SupervisorJob()) }
+    private var callReceiver: CallInterceptionReceiver? = null
 
     override fun onCreate() {
         super.onCreate()
         instance = this
         setupCrashHandler()
+        registerCallReceiverDynamically()
+        tryStartDynamicIsland()
     }
 
     private fun setupCrashHandler() {
@@ -72,6 +79,33 @@ class NovaApplication : Application() {
         }
     }
 
+    private fun registerCallReceiverDynamically() {
+        try {
+            if (callReceiver == null) {
+                callReceiver = CallInterceptionReceiver()
+                val filter = IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED)
+                registerReceiver(callReceiver, filter)
+            }
+        } catch (e: Throwable) {
+            Log.e("NovaApplication", "Error registering CallInterceptionReceiver dynamically", e)
+        }
+    }
+
+    fun tryStartDynamicIsland() {
+        try {
+            if (Settings.canDrawOverlays(this) && settingsRepository.settings.value.dynamicIslandEnabled) {
+                val intent = Intent(this, DynamicIslandService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(intent)
+                } else {
+                    startService(intent)
+                }
+            }
+        } catch (e: Throwable) {
+            Log.e("NovaApplication", "Failed to start DynamicIslandService in app init", e)
+        }
+    }
+
     fun processGlobalCommand(userPrompt: String) {
         val trimmed = userPrompt.trim()
         if (trimmed.isBlank()) return
@@ -81,78 +115,97 @@ class NovaApplication : Application() {
             chatRepository.addMessage(ChatMessage(sender = MessageSender.USER, content = trimmed))
 
             val lower = trimmed.lowercase()
+                .removePrefix("hey jarvis").removePrefix("jarvis")
+                .removePrefix("hey nova").removePrefix("nova")
+                .removePrefix("can you please").removePrefix("could you please")
+                .removePrefix("can you").removePrefix("could you")
+                .removePrefix("please").trim()
 
-            // 1. FAST LOCAL ACTION DISPATCH
+            // 1. GREETINGS & JARVIS CONVERSATIONAL ESSENTIALS
+            if (lower == "hello" || lower == "hi" || lower == "hey" || lower == "who are you" ||
+                lower == "what can you do" || lower == "what is your name" || lower == "are you jarvis") {
+                val jarvisIntro = "Greetings, sir. I am Jarvis (Nova Agent), your autonomous personal companion. All systems are online and at your service. I can launch apps, dial contacts, scroll reels, and converse naturally. What are your orders?"
+                voiceManager.speak(jarvisIntro)
+                DynamicIslandService.postAction("Jarvis Active")
+                chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = jarvisIntro))
+                return
+            }
+
+            // 2. FAST APP LAUNCH
             if (lower.startsWith("open ") || lower.startsWith("launch ") || lower.startsWith("start ")) {
                 val appQuery = lower.removePrefix("open ").removePrefix("launch ").removePrefix("start ").trim()
                 val opened = appLauncher.openAppByName(appQuery)
                 if (opened) {
-                    val resp = "Opening $appQuery now."
+                    val resp = "Opening $appQuery right away, sir."
                     voiceManager.speak(resp)
                     DynamicIslandService.postAction("Opened $appQuery")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp, actionBadge = "Opened $appQuery"))
                 } else {
-                    val resp = "Could not find app \"$appQuery\" installed on this device."
+                    val resp = "I couldn't locate \"$appQuery\" installed on this device."
                     voiceManager.speak(resp)
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp))
                 }
                 return
             }
 
-            if (lower.contains("scroll down") || lower.contains("next reel") || lower.contains("next short") || lower.contains("next video")) {
+            // 3. FAST MEDIA SCROLLING
+            if (lower.contains("scroll down") || lower.contains("next reel") || lower.contains("next short") ||
+                lower.contains("next video") || lower == "next" || lower == "scroll next") {
                 val service = AgentAccessibilityService.instance
                 val scrolled = service?.scrollMedia("up") ?: false
                 if (scrolled) {
-                    voiceManager.speak("Scrolled to next video")
+                    voiceManager.speak("Scrolling to next video.")
                     DynamicIslandService.postAction("Scrolled Next")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Scrolled to next media item.", actionBadge = "Scrolled Down"))
                 } else {
-                    voiceManager.speak("Accessibility permission needed to scroll.")
+                    voiceManager.speak("Accessibility permission is needed to scroll the screen.")
                 }
                 return
             }
 
-            if (lower.contains("scroll up") || lower.contains("previous reel") || lower.contains("previous video")) {
+            if (lower.contains("scroll up") || lower.contains("previous reel") || lower.contains("previous video") || lower == "previous") {
                 val service = AgentAccessibilityService.instance
                 val scrolled = service?.scrollMedia("down") ?: false
                 if (scrolled) {
-                    voiceManager.speak("Scrolled to previous video")
+                    voiceManager.speak("Scrolling to previous video.")
                     DynamicIslandService.postAction("Scrolled Previous")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Scrolled to previous media item.", actionBadge = "Scrolled Up"))
                 } else {
-                    voiceManager.speak("Accessibility permission needed to scroll.")
+                    voiceManager.speak("Accessibility permission is needed to scroll the screen.")
                 }
                 return
             }
 
-            if (lower.contains("pause") || lower.contains("play") || lower.contains("resume video")) {
+            // 4. PLAY / PAUSE
+            if (lower == "play" || lower == "pause" || lower == "resume" || lower.contains("play video") || lower.contains("pause video")) {
                 val service = AgentAccessibilityService.instance
                 val toggled = service?.togglePlayPause() ?: false
                 if (toggled) {
-                    voiceManager.speak("Toggled playback")
+                    voiceManager.speak("Toggled playback.")
                     DynamicIslandService.postAction("Play/Pause")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Toggled video playback.", actionBadge = "Play/Pause"))
                 } else {
-                    voiceManager.speak("Accessibility needed to tap screen.")
+                    voiceManager.speak("Accessibility needed to tap video controls.")
                 }
                 return
             }
 
-            if (lower.startsWith("call ") || lower.startsWith("dial ")) {
-                val targetName = lower.removePrefix("call ").removePrefix("dial ").trim()
+            // 5. CALLING & CONTACT SEARCH
+            if (lower.startsWith("call ") || lower.startsWith("dial ") || lower.startsWith("phone ")) {
+                val targetName = lower.removePrefix("call ").removePrefix("dial ").removePrefix("phone ").trim()
                 val contacts = contactsHelper.searchContacts(targetName)
                 if (contacts.isEmpty()) {
-                    val resp = "Could not find any contact named $targetName."
+                    val resp = "Could not find any contact named \"$targetName\"."
                     voiceManager.speak(resp)
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp))
                 } else if (contacts.size == 1) {
                     val single = contacts.first()
                     telephonyHelper.dialCall(single.phoneNumber)
-                    voiceManager.speak("Calling ${single.name} at ${single.phoneNumber}")
+                    voiceManager.speak("Calling ${single.name} now.")
                     DynamicIslandService.postAction("Calling ${single.name}")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Calling ${single.name} (${single.phoneNumber}).", actionBadge = "Calling ${single.name}"))
                 } else {
-                    val resp = "Found ${contacts.size} numbers for $targetName. Please open Nova Agent to select a row number."
+                    val resp = "Found ${contacts.size} entries for $targetName. Please select an option in the app."
                     voiceManager.speak(resp)
                     chatRepository.addMessage(
                         ChatMessage(
@@ -170,30 +223,33 @@ class NovaApplication : Application() {
                 return
             }
 
+            // 6. TYPING INTO FOCUSED INPUT
             if (lower.startsWith("type ") || lower.startsWith("search for ") || lower.startsWith("search ")) {
                 val textToType = lower.removePrefix("type ").removePrefix("search for ").removePrefix("search ").trim()
                 val service = AgentAccessibilityService.instance
                 val typed = service?.typeTextIntoInput("", textToType) ?: false
                 if (typed) {
-                    voiceManager.speak("Typed $textToType")
+                    voiceManager.speak("Typed: $textToType")
                     DynamicIslandService.postAction("Typed: $textToType")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Typed: \"$textToType\".", actionBadge = "Typed Text"))
                 } else {
-                    voiceManager.speak("No input field focused. Please tap an input box first.")
+                    voiceManager.speak("No input field is currently active. Tap an input box first.")
                 }
                 return
             }
 
-            // 2. AI BRAIN REASONING (Gemini / AI Studio)
+            // 7. AI BRAIN REASONING (Gemini / AI Studio or OpenAI)
             val config = apiConfigRepository.config.value
             if (config.apiKey.isBlank()) {
-                val noKeyMessage = "I heard: \"$trimmed\". To enable AI reasoning, please open Nova Agent and paste your Gemini API Studio key in the API Setup tab."
+                val noKeyMessage = "At your command, sir. For deep conversational reasoning and Jarvis intelligence, please paste your Gemini API Studio key in the API Setup tab. You can still use voice commands to open apps, make calls, or scroll."
                 voiceManager.speak(noKeyMessage)
-                DynamicIslandService.postAction("API Key Required")
+                DynamicIslandService.postAction("API Key Setup Needed")
                 chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = noKeyMessage))
                 return
             }
 
+            // AI Processing
+            DynamicIslandService.postAction("Nova: Thinking...")
             appScope.launch {
                 try {
                     val screenContext = AgentAccessibilityService.instance?.inspectCurrentScreen()
@@ -201,7 +257,7 @@ class NovaApplication : Application() {
 
                     result.onSuccess { decision ->
                         voiceManager.speak(decision.assistant_response)
-                        DynamicIslandService.postAction(decision.assistant_response.take(24))
+                        DynamicIslandService.postAction(decision.assistant_response.take(28))
 
                         var badge: String? = null
                         when (val cmd = decision.command) {
@@ -238,8 +294,7 @@ class NovaApplication : Application() {
                                 }
                             }
                             is AgentCommand.InspectScreen -> {
-                                val sc = AgentAccessibilityService.instance?.inspectCurrentScreen() ?: "Screen unavailable"
-                                badge = "Watchdog Inspected"
+                                badge = "Screen Inspected"
                             }
                             else -> {}
                         }
@@ -252,8 +307,9 @@ class NovaApplication : Application() {
                             )
                         )
                     }.onFailure { err ->
-                        val errMsg = "Error from AI Studio: ${err.localizedMessage ?: "Unknown error"}. Please check your API key."
-                        voiceManager.speak(errMsg)
+                        val errMsg = "Jarvis connection note: ${err.localizedMessage ?: "Unable to complete request"}. Please verify your API key and model in API Setup."
+                        voiceManager.speak("I encountered an issue processing with the AI Studio model. Please check your API key in settings.")
+                        DynamicIslandService.postAction("API Error")
                         chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = errMsg))
                     }
                 } catch (e: Throwable) {

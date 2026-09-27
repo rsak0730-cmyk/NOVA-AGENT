@@ -17,37 +17,27 @@ class VoicemailRepository(context: Context) {
     private val _voicemails = MutableStateFlow<List<VoicemailItem>>(loadVoicemailsSafely())
     val voicemails: StateFlow<List<VoicemailItem>> = _voicemails.asStateFlow()
 
+    private val _userPhoneNumber = MutableStateFlow(prefs.getString("user_mobile_number", "") ?: "")
+    val userPhoneNumber: StateFlow<String> = _userPhoneNumber.asStateFlow()
+
+    fun saveUserPhoneNumber(number: String) {
+        val trimmed = number.trim()
+        _userPhoneNumber.value = trimmed
+        prefs.edit().putString("user_mobile_number", trimmed).apply()
+    }
+
     private fun loadVoicemailsSafely(): List<VoicemailItem> {
         return try {
             val raw = prefs.getString("voicemails_json", null)
             if (!raw.isNullOrBlank()) {
                 json.decodeFromString<List<VoicemailItem>>(raw)
             } else {
-                sampleVoicemails()
+                emptyList()
             }
         } catch (e: Throwable) {
             Log.e("VoicemailRepository", "Error decoding voicemails", e)
-            sampleVoicemails()
+            emptyList()
         }
-    }
-
-    private fun sampleVoicemails(): List<VoicemailItem> {
-        return listOf(
-            VoicemailItem(
-                callerName = "Alex Rivera",
-                phoneNumber = "+1 (555) 234-8901",
-                timestamp = System.currentTimeMillis() - 1000 * 60 * 45,
-                durationSeconds = 18,
-                transcript = "Hey, just following up on our project review meeting. Call me back when you're free!"
-            ),
-            VoicemailItem(
-                callerName = "Mom",
-                phoneNumber = "+1 (555) 890-1234",
-                timestamp = System.currentTimeMillis() - 1000 * 60 * 60 * 4,
-                durationSeconds = 24,
-                transcript = "Hi dear! Don't forget Sunday dinner at 6 PM. Let me know if you need anything brought over."
-            )
-        )
     }
 
     fun addVoicemail(item: VoicemailItem) {

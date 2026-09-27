@@ -1,7 +1,9 @@
 package com.editog.novaagent
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,9 +14,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editog.novaagent.service.DynamicIslandService
 import com.editog.novaagent.ui.CrashReportActivity
 import com.editog.novaagent.ui.navigation.AppNavHost
 import com.editog.novaagent.ui.theme.NovaAgentTheme
@@ -81,6 +83,30 @@ class MainActivity : ComponentActivity() {
             } catch (e2: Throwable) {
                 Log.e("MainActivity", "Fallback to CrashReportActivity failed", e2)
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkAndStartDynamicIsland()
+    }
+
+    private fun checkAndStartDynamicIsland() {
+        try {
+            val app = (application as? NovaApplication) ?: NovaApplication.instance ?: return
+            val settings = app.settingsRepository.settings.value
+            if (settings.dynamicIslandEnabled && Settings.canDrawOverlays(this)) {
+                if (DynamicIslandService.instance == null) {
+                    val serviceIntent = Intent(this, DynamicIslandService::class.java)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(serviceIntent)
+                    } else {
+                        startService(serviceIntent)
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            Log.e("MainActivity", "Error starting DynamicIslandService onResume", e)
         }
     }
 }
