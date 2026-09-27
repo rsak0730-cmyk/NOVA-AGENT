@@ -8,6 +8,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -31,6 +32,12 @@ class CrashReportActivity : Activity() {
         val errorMessage = intent?.getStringExtra(EXTRA_ERROR_MESSAGE) ?: "Unexpected startup failure"
         val stackTrace = intent?.getStringExtra(EXTRA_STACK_TRACE) ?: "No stack trace available."
 
+        val versionName = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "Unknown"
+        } catch (_: Throwable) {
+            "1.0.x"
+        }
+
         val density = resources.displayMetrics.density
         fun dp(value: Int): Int = (value * density).toInt()
 
@@ -41,7 +48,7 @@ class CrashReportActivity : Activity() {
 
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(36), dp(20), dp(36))
+            setPadding(dp(20), dp(32), dp(20), dp(32))
             gravity = Gravity.CENTER_HORIZONTAL
         }
 
@@ -55,13 +62,23 @@ class CrashReportActivity : Activity() {
         }
         rootLayout.addView(titleText)
 
+        // Version Tag
+        val versionText = TextView(this).apply {
+            text = "Installed Version: v$versionName"
+            setTextColor(0xFF6B7280.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(2), 0, dp(8))
+        }
+        rootLayout.addView(versionText)
+
         // Subtitle
         val subtitleText = TextView(this).apply {
-            text = "Nova Agent encountered an unhandled issue. Review the diagnostic report below or restart in safe mode."
+            text = "Nova Agent encountered an unhandled issue. Review the diagnostic report below, update to the latest build, or restart in safe mode."
             setTextColor(0xFF9CA3AF.toInt())
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             gravity = Gravity.CENTER
-            setPadding(0, dp(8), 0, dp(16))
+            setPadding(0, 0, 0, dp(14))
         }
         rootLayout.addView(subtitleText)
 
@@ -80,7 +97,7 @@ class CrashReportActivity : Activity() {
                 0,
                 1.0f
             ).apply {
-                setMargins(0, dp(4), 0, dp(16))
+                setMargins(0, dp(4), 0, dp(14))
             }
         }
 
@@ -96,7 +113,7 @@ class CrashReportActivity : Activity() {
         val traceScroll = ScrollView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(220)
+                dp(200)
             )
         }
 
@@ -120,6 +137,34 @@ class CrashReportActivity : Activity() {
             )
         }
 
+        // Update to Latest APK Button
+        val updateBtn = Button(this).apply {
+            text = "Download Latest Update APK (v1.0.9)"
+            setTextColor(Color.BLACK)
+            typeface = Typeface.DEFAULT_BOLD
+            val btnBg = GradientDrawable().apply {
+                setColor(0xFF00FF66.toInt())
+                cornerRadius = dp(10).toFloat()
+            }
+            background = btnBg
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(48)
+            ).apply {
+                setMargins(0, 0, 0, dp(8))
+            }
+            setOnClickListener {
+                try {
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/rsak0730-cmyk/NOVA-AGENT/releases/latest"))
+                    browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(browserIntent)
+                } catch (_: Throwable) {
+                    Toast.makeText(this@CrashReportActivity, "Could not open browser", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        buttonsContainer.addView(updateBtn)
+
         // Restart in Safe Mode Button (Clears Corrupted Preferences)
         val safeRestartBtn = Button(this).apply {
             text = "Clear Cache & Restart (Safe Mode)"
@@ -134,7 +179,7 @@ class CrashReportActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(48)
             ).apply {
-                setMargins(0, 0, 0, dp(10))
+                setMargins(0, 0, 0, dp(8))
             }
             setOnClickListener {
                 clearAllPreferences()
@@ -156,9 +201,9 @@ class CrashReportActivity : Activity() {
             background = btnBg
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(48)
+                dp(46)
             ).apply {
-                setMargins(0, 0, 0, dp(10))
+                setMargins(0, 0, 0, dp(8))
             }
             setOnClickListener {
                 launchMainActivity()
@@ -182,7 +227,7 @@ class CrashReportActivity : Activity() {
             )
             setOnClickListener {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Nova Agent Error Log", "Error: $errorMessage\n\nStack:\n$stackTrace")
+                val clip = ClipData.newPlainText("Nova Agent Error Log", "Version: v$versionName\nError: $errorMessage\n\nStack:\n$stackTrace")
                 clipboard.setPrimaryClip(clip)
                 Toast.makeText(this@CrashReportActivity, "Error copied to clipboard", Toast.LENGTH_SHORT).show()
             }
