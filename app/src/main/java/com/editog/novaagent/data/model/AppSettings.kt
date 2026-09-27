@@ -57,16 +57,16 @@ enum class UiDesignStyle(val displayName: String) {
 
 @Serializable
 enum class TextAnimationStyle(val displayName: String) {
-    SOLID("Solid [White]"),
-    GRADIENT("Gradient [2-4 Colors]"),
-    AURORA("Aurora [Animated Multicolor]"),
-    GLOW("Glow [Custom Color]"),
+    SOLID("Solid White [Shimmer Sweep]"),
+    GRADIENT("Gradient [Electric Shimmer]"),
+    AURORA("Aurora [Multicolor Wave Shimmer]"),
+    GLOW("Neon Glow [Specular Shimmer]"),
     GLASS("Glass [Neon Blue Shimmer]"),
-    METALLIC("Metallic [Chrome/Gold]"),
-    HOLOGRAPHIC("Holographic [Iridescent Rainbow]"),
-    LIQUID("Liquid [Fluid Reflection]"),
-    THREE_D("3D [Extrusion + Depth Shadows]"),
-    OUTLINE("Outline [Transparent Fill + Stroke]")
+    METALLIC("Metallic [Chrome/Gold Shimmer]"),
+    HOLOGRAPHIC("Holographic [Rainbow Prism Shimmer]"),
+    LIQUID("Liquid [Fluid Reflection Shimmer]"),
+    THREE_D("3D [Extrusion Depth Shimmer]"),
+    OUTLINE("Outline [Traveling Neon Shimmer]")
 }
 
 @Serializable

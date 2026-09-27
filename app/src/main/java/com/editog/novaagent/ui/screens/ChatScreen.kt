@@ -140,11 +140,12 @@ fun ChatScreen(
                             fontWeight = FontWeight.Bold,
                             customGlowColor = primaryColor
                         )
-                        Text(
+                        StyledText(
                             text = "by @edit.og_",
-                            color = primaryColor.copy(alpha = 0.8f),
+                            style = settings.textAnimationStyle,
                             fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            customGlowColor = primaryColor
                         )
                     }
                 }
@@ -410,20 +411,13 @@ fun ChatBubbleItem(
                     }
                 }
 
-                if (isUser) {
-                    Text(
-                        text = message.content,
-                        color = Color.White,
-                        fontSize = 14.sp
-                    )
-                } else {
-                    StyledText(
-                        text = message.content,
-                        style = settings.textAnimationStyle,
-                        fontSize = 14.sp,
-                        customGlowColor = primaryColor
-                    )
-                }
+                StyledText(
+                    text = message.content,
+                    style = settings.textAnimationStyle,
+                    fontSize = 14.5.sp,
+                    fontWeight = if (isUser) FontWeight.Medium else FontWeight.Normal,
+                    customGlowColor = primaryColor
+                )
 
                 if (message.pendingConfirmation != null) {
                     Spacer(modifier = Modifier.height(8.dp))

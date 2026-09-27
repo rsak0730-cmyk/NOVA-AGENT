@@ -8,7 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.editog.novaagent.data.model.TextAnimationStyle
@@ -20,6 +23,11 @@ fun StyledText(
     modifier: Modifier = Modifier,
     fontSize: TextUnit = 16.sp,
     fontWeight: FontWeight = FontWeight.Normal,
+    fontStyle: FontStyle? = null,
+    textAlign: TextAlign? = null,
+    lineHeight: TextUnit = TextUnit.Unspecified,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
     customGlowColor: Color = Color(0xFF00F0FF)
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer_engine")
@@ -27,7 +35,7 @@ fun StyledText(
         initialValue = -300f,
         targetValue = 900f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2600, easing = LinearEasing),
+            animation = tween(2400, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmer_glint"
@@ -35,13 +43,13 @@ fun StyledText(
 
     when (style) {
         TextAnimationStyle.SOLID -> {
-            // Crisp white typography with a flowing bright silver-white shimmer sweep
+            // White typography with a flowing silver-white shimmer sweep
             val shimmerBrush = Brush.linearGradient(
                 colors = listOf(
                     Color.White.copy(alpha = 0.85f),
                     Color(0xFFE2E8F0),
                     Color(0xFFFFFFFF),
-                    Color(0xFF888888),
+                    Color(0xFFAAAAAA),
                     Color.White.copy(alpha = 0.85f)
                 ),
                 start = Offset(shimmerOffset, 0f),
@@ -51,7 +59,9 @@ fun StyledText(
             Text(
                 text = text,
                 modifier = modifier,
-                style = TextStyle(brush = shimmerBrush, fontSize = fontSize, fontWeight = fontWeight)
+                style = TextStyle(brush = shimmerBrush, fontSize = fontSize, fontWeight = fontWeight, fontStyle = fontStyle, textAlign = textAlign, lineHeight = lineHeight),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -72,7 +82,9 @@ fun StyledText(
             Text(
                 text = text,
                 modifier = modifier,
-                style = TextStyle(brush = shimmerBrush, fontSize = fontSize, fontWeight = fontWeight)
+                style = TextStyle(brush = shimmerBrush, fontSize = fontSize, fontWeight = fontWeight, fontStyle = fontStyle, textAlign = textAlign, lineHeight = lineHeight),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -94,7 +106,9 @@ fun StyledText(
             Text(
                 text = text,
                 modifier = modifier,
-                style = TextStyle(brush = auroraBrush, fontSize = fontSize, fontWeight = fontWeight)
+                style = TextStyle(brush = auroraBrush, fontSize = fontSize, fontWeight = fontWeight, fontStyle = fontStyle, textAlign = textAlign, lineHeight = lineHeight),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -117,12 +131,17 @@ fun StyledText(
                     brush = glowBrush,
                     fontSize = fontSize,
                     fontWeight = fontWeight,
+                    fontStyle = fontStyle,
+                    textAlign = textAlign,
+                    lineHeight = lineHeight,
                     shadow = Shadow(
                         color = customGlowColor.copy(alpha = 0.85f),
                         offset = Offset(0f, 0f),
                         blurRadius = 18f
                     )
-                )
+                ),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -143,7 +162,9 @@ fun StyledText(
             Text(
                 text = text,
                 modifier = modifier,
-                style = TextStyle(brush = glassBrush, fontSize = fontSize, fontWeight = fontWeight)
+                style = TextStyle(brush = glassBrush, fontSize = fontSize, fontWeight = fontWeight, fontStyle = fontStyle, textAlign = textAlign, lineHeight = lineHeight),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -151,9 +172,9 @@ fun StyledText(
             // Chrome / Gold metallic surface with a moving polished light glint
             val metallicBrush = Brush.linearGradient(
                 colors = listOf(
-                    Color(0xFFD4AF37), // Metallic gold / chrome
+                    Color(0xFFD4AF37),
                     Color(0xFFFFF8DC),
-                    Color(0xFFFFFFFF), // Bright glint
+                    Color(0xFFFFFFFF),
                     Color(0xFFA67C1E),
                     Color(0xFFD4AF37)
                 ),
@@ -164,7 +185,9 @@ fun StyledText(
             Text(
                 text = text,
                 modifier = modifier,
-                style = TextStyle(brush = metallicBrush, fontSize = fontSize, fontWeight = fontWeight)
+                style = TextStyle(brush = metallicBrush, fontSize = fontSize, fontWeight = fontWeight, fontStyle = fontStyle, textAlign = textAlign, lineHeight = lineHeight),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -174,7 +197,7 @@ fun StyledText(
                 colors = listOf(
                     Color(0xFFFF3366),
                     Color(0xFF33CCFF),
-                    Color(0xFFFFFFFF), // Prismatic shimmer flare
+                    Color(0xFFFFFFFF),
                     Color(0xFF33FF99),
                     Color(0xFFFFCC00),
                     Color(0xFFCC33FF)
@@ -186,7 +209,9 @@ fun StyledText(
             Text(
                 text = text,
                 modifier = modifier,
-                style = TextStyle(brush = holoBrush, fontSize = fontSize, fontWeight = fontWeight)
+                style = TextStyle(brush = holoBrush, fontSize = fontSize, fontWeight = fontWeight, fontStyle = fontStyle, textAlign = textAlign, lineHeight = lineHeight),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -207,7 +232,9 @@ fun StyledText(
             Text(
                 text = text,
                 modifier = modifier,
-                style = TextStyle(brush = liquidBrush, fontSize = fontSize, fontWeight = fontWeight)
+                style = TextStyle(brush = liquidBrush, fontSize = fontSize, fontWeight = fontWeight, fontStyle = fontStyle, textAlign = textAlign, lineHeight = lineHeight),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -231,12 +258,17 @@ fun StyledText(
                     brush = surfaceBrush,
                     fontSize = fontSize,
                     fontWeight = fontWeight,
+                    fontStyle = fontStyle,
+                    textAlign = textAlign,
+                    lineHeight = lineHeight,
                     shadow = Shadow(
                         color = Color(0xFF0055FF),
                         offset = Offset(3.5f, 3.5f),
                         blurRadius = 4f
                     )
-                )
+                ),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
 
@@ -261,12 +293,17 @@ fun StyledText(
                     brush = outlineBrush,
                     fontSize = fontSize,
                     fontWeight = fontWeight,
+                    fontStyle = fontStyle,
+                    textAlign = textAlign,
+                    lineHeight = lineHeight,
                     shadow = Shadow(
                         color = Color(0x6600F0FF),
                         offset = Offset(0f, 0f),
                         blurRadius = 6f
                     )
-                )
+                ),
+                maxLines = maxLines,
+                overflow = overflow
             )
         }
     }

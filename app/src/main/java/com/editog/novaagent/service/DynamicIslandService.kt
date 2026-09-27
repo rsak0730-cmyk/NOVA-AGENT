@@ -219,17 +219,11 @@ class DynamicIslandService : Service() {
                             return true
                         }
                         MotionEvent.ACTION_UP -> {
-                            val duration = System.currentTimeMillis() - startTime
                             if (!isDragging) {
-                                if (duration > 800) {
-                                    // Long press: open app
-                                    v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                    openApp()
-                                } else {
-                                    // Click: Start or stop listening mode
-                                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                    toggleVoiceListening()
-                                }
+                                // Click / Tap: Turn on or toggle voice listening mode directly!
+                                // Never open the agent app - stay in current app and stream speech to chat
+                                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                toggleVoiceListening()
                             } else {
                                 // Persist user drag location to settings
                                 app?.settingsRepository?.let { repo ->
@@ -290,17 +284,7 @@ class DynamicIslandService : Service() {
         app.voiceManager.toggleListening()
     }
 
-    private fun openApp() {
-        try {
-            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-            if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                startActivity(launchIntent)
-            }
-        } catch (e: Throwable) {
-            Log.e("DynamicIslandService", "Error launching app from island", e)
-        }
-    }
+
 
     private fun observeSettings() {
         val app = (application as? NovaApplication) ?: NovaApplication.instance ?: return

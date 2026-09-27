@@ -22,6 +22,14 @@ class CallInterceptionReceiver : BroadcastReceiver() {
             if (context == null || intent == null) return
             if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
 
+            val app = (context.applicationContext as? NovaApplication) ?: NovaApplication.instance
+            val profile = app?.voicemailRepository?.userProfile?.value
+
+            // If guardian is disabled, skip interception
+            if (profile != null && !profile.isGuardianActive) {
+                return
+            }
+
             val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
             val incomingNumber = try {
                 val num = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
@@ -29,6 +37,8 @@ class CallInterceptionReceiver : BroadcastReceiver() {
             } catch (e: Throwable) {
                 currentIncomingNumber
             }
+
+            val waitSeconds = profile?.ringSeconds ?: 20
 
             when (state) {
                 TelephonyManager.EXTRA_STATE_RINGING -> {
@@ -38,20 +48,25 @@ class CallInterceptionReceiver : BroadcastReceiver() {
                     ringJob?.cancel()
                     ringJob = receiverScope.launch {
                         try {
-                            // Monitor for 20 seconds of unanswered ringing
-                            for (sec in 1..4) {
+                            // Monitor ringing countdown up to user-configured waitSeconds
+                            val intervals = (waitSeconds / 5).coerceAtLeast(1)
+                            for (step in 1..intervals) {
                                 delay(5000)
-                                DynamicIslandService.postAction("📞 Ringing (${sec * 5}s / 20s)")
+                                DynamicIslandService.postAction("📞 Ringing (${step * 5}s / ${waitSeconds}s)")
                             }
 
-                            val app = (context.applicationContext as? NovaApplication) ?: NovaApplication.instance
                             if (app != null) {
                                 val callerContact = app.contactsHelper.searchContacts(currentIncomingNumber).firstOrNull()
                                 val callerName = callerContact?.name ?: if (currentIncomingNumber.startsWith("+") || currentIncomingNumber.any { it.isDigit() }) "Caller ($currentIncomingNumber)" else "Mobile Caller"
 
                                 withContext(Dispatchers.Main) {
                                     DynamicIslandService.postAction("🎙️ Agent Answering Voicemail...")
-                                    app.voiceManager.speak("The owner is currently unavailable. Please leave a voicemail after the tone.")
+                                    val greeting = if (profile != null && profile.greetingMessage.isNotBlank()) {
+                                        profile.greetingMessage
+                                    } else {
+                                        "The owner is currently unavailable. Please leave a voicemail after the tone."
+                                    }
+                                    app.voiceManager.speak(greeting)
                                 }
 
                                 delay(6000)
@@ -60,8 +75,8 @@ class CallInterceptionReceiver : BroadcastReceiver() {
                                     callerName = callerName,
                                     phoneNumber = currentIncomingNumber,
                                     timestamp = System.currentTimeMillis(),
-                                    durationSeconds = 18,
-                                    transcript = "Unanswered call after 20 seconds ringing. Caller left a recorded message: 'Hello, please return my call as soon as you are available.'"
+                                    durationSeconds = 16,
+                                    transcript = "Unanswered call after ${waitSeconds}s ringing. Caller left a recorded message: 'Hello, please return my call as soon as you are available.'"
                                 )
                                 app.voicemailRepository.addVoicemail(voicemail)
 
@@ -70,20 +85,18 @@ class CallInterceptionReceiver : BroadcastReceiver() {
                                 }
                             }
                         } catch (e: Throwable) {
-                            Log.e("CallInterception", "Error in 20s voicemail delay", e)
+                            Log.e("CallInterception", "Error in voicemail delay", e)
                         }
                     }
                 }
 
                 TelephonyManager.EXTRA_STATE_OFFHOOK -> {
-                    // Call answered by user, stop voicemail assistant
                     ringJob?.cancel()
                     ringJob = null
                     DynamicIslandService.postAction("Call in progress")
                 }
 
                 TelephonyManager.EXTRA_STATE_IDLE -> {
-                    // Call finished or disconnected
                     ringJob?.cancel()
                     ringJob = null
                 }
