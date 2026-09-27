@@ -5,6 +5,8 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.content.pm.PackageManager
+import com.editog.novaagent.automation.ShizukuManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,8 +26,14 @@ import com.editog.novaagent.ui.theme.TexturedBackground
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        var currentActivity: MainActivity? = null
+            private set
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        currentActivity = this
 
         try {
             enableEdgeToEdge()
@@ -114,6 +122,26 @@ class MainActivity : ComponentActivity() {
             }
         } catch (e: Throwable) {
             Log.e("MainActivity", "Error starting DynamicIslandService onResume", e)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        val app = (application as? NovaApplication) ?: NovaApplication.instance
+        if (requestCode == ShizukuManager.REQUEST_CODE_SHIZUKU) {
+            val res = grantResults.firstOrNull() ?: PackageManager.PERMISSION_DENIED
+            app?.shizukuManager?.onPermissionResult(requestCode, res)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (currentActivity == this) {
+            currentActivity = null
         }
     }
 }

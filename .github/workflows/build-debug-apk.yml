@@ -54,28 +54,33 @@ jobs:
       - name: Prepare Direct APK for Release
         run: |
           mkdir -p release-apk
-          find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} release-apk/NovaAgent-v2.0.5.apk \;
+          find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} release-apk/NovaAgent-v2.0.6.apk \;
 
       - name: Create or Update GitHub Release with Direct APK
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v2.0.5
-          name: "Nova Agent v2.0.5 - Direct APK Download"
+          tag_name: v2.0.6
+          name: "Nova Agent v2.0.6 - Direct APK Download"
           body: |
-            ### 🚀 Nova Agent v2.0.5 (Direct Install APK)
+            ### 🚀 Nova Agent v2.0.6 (Direct Install APK)
             **Direct APK Download (No unzipping required)**
-            Download `NovaAgent-v2.0.5.apk` below directly to your device and tap it to install.
+            Download `NovaAgent-v2.0.6.apk` below directly to your device and tap it to install.
             
-            #### What's Fixed & Upgraded in v2.0.5:
-            - **Chat Box Moves Dynamically with User Keyboard**: The typing box (text input field, voice microphone button, and send button) now smoothly glides up directly on top of the virtual keyboard when typing. You can always see what you are writing without the keyboard obscuring it.
-            - **Zero Keyboard-Chat Gap**: Mathematically exact inset padding guarantees flush placement on top of the keyboard when open and sits cleanly atop the navigation bar when closed.
-            - **Auto-Scroll on Keyboard Open**: Conversation messages automatically scroll up to keep the latest message visible right above the elevated typing box.
-            - **Fixed Dynamic Island Tap (100% Reliable Toggle)**: Tapping the Dynamic Island pill reliably toggles voice listening without app switching; you stay on your active screen while talking to Jarvis.
-            - **Volume Up Hardware Key Interception**: Pressing Volume Up anywhere reliably triggers voice listening via accessibility service.
-            - **Real-Time Active Screen Actions**: Complete active screen control (scrolling, clicking, media play/pause, typing, screen inspection).
-            - **Universal Shimmer Text**: All 10 text animation styles feature animated continuous shimmer across all chat messages and screen elements.
-            - **Full Voicemail Profile**: Configure user name, mobile SIM number, custom spoken greeting, ring delay slider, and voicemail screening.
-          files: release-apk/NovaAgent-v2.0.5.apk
+            #### What's New & Upgraded in v2.0.6:
+            - **⚡ Shizuku Zero-Touch Autonomous App Control**:
+              - Integrated official Shizuku API (`dev.rikka.shizuku:api` & `provider`).
+              - Controls ALL Android apps with ADB-level privileges without a single touch from the user.
+              - Autonomous primitives: tap coordinates, swipe/scroll media (Shorts, Reels, TikTok), type text into search inputs, press Back/Home/Recents keys, and inspect on-screen UI elements via `uiautomator`.
+              - Dedicated Shizuku status badge and authorization card in Settings with automatic fallback to Accessibility Service when Shizuku is offline.
+            - **🎙️ Always-On 'Hey Jarvis' Wake Word (Hands-Free Background Detection)**:
+              - Say *"Hey Jarvis wake up"* or *"Wake up"* from the background or while inside any other app to turn on Jarvis listening mode hands-free!
+              - Say *"Hey Jarvis turn off"*, *"Turn off"*, or *"Go to sleep"* to deactivate listening mode and return Jarvis to quiet standby.
+              - Runs 24/7 in the background via the Dynamic Island microphone foreground service (`FOREGROUND_SERVICE_TYPE_MICROPHONE`).
+            - **Keyboard-Responsive Chat Box (v2.0.5)**: Input field and controls glide directly atop the soft keyboard with 0 gap and auto-scrolls chat history.
+            - **iOS-Style Dynamic Island**: Floating overlay pill over all apps with tap-to-listen toggle.
+            - **Physical Volume Up Key Trigger**: Hardware shortcut toggles listening anywhere in the OS.
+            - **Real Textured Themes & Universal Shimmer**: 10 procedural textures and universal animated shimmer text.
+          files: release-apk/NovaAgent-v2.0.6.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

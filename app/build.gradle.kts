@@ -13,8 +13,8 @@ android {
         applicationId = "com.editog.novaagent.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 25
-        versionName = "2.0.5"
+        versionCode = 26
+        versionName = "2.0.6"
         multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -85,6 +85,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

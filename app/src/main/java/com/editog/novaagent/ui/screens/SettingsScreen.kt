@@ -32,6 +32,7 @@ import com.editog.novaagent.service.DynamicIslandService
 import com.editog.novaagent.ui.components.DynamicIslandPreview
 import com.editog.novaagent.ui.components.StyledText
 import com.editog.novaagent.ui.theme.applyUiStyle
+import com.editog.novaagent.MainActivity
 import com.editog.novaagent.ui.theme.TexturePreviewBox
 
 @Composable
@@ -41,6 +42,9 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val primaryColor = Color(currentSettings.themeColor.primaryHex)
+    val isShizukuAvailable by app.shizukuManager.isAvailable.collectAsState()
+    val hasShizukuPermission by app.shizukuManager.hasPermission.collectAsState()
+    val isWakeWordListening by app.wakeWordManager.isWakeWordListening.collectAsState()
     val isAccessibilityActive by AgentAccessibilityService.isServiceActive.collectAsState()
 
     var showGlowColorPicker by remember { mutableStateOf(false) }
@@ -725,6 +729,192 @@ fun SettingsScreen(
                         Text("Test Live Island", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
+            }
+        }
+
+        // Section 6: Shizuku Zero-Touch Autopilot
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .applyUiStyle(currentSettings.uiDesign, primaryColor)
+                .padding(16.dp)
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "6. ⚡ Shizuku Zero-Touch Autopilot",
+                            color = primaryColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = "Control all Android apps autonomously via ADB privileges:",
+                            color = Color(0xFF9CA3AF),
+                            fontSize = 12.sp
+                        )
+                    }
+                    Switch(
+                        checked = currentSettings.shizukuAutopilotEnabled,
+                        onCheckedChange = {
+                            app.settingsRepository.updateSettings(currentSettings.copy(shizukuAutopilotEnabled = it))
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = primaryColor, checkedTrackColor = primaryColor.copy(alpha = 0.4f))
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Status Badge
+                val (statusText, statusBg, statusColor) = when {
+                    hasShizukuPermission -> Triple("🟢 Active (ADB Privileged) — Full Zero-Touch Control", Color(0xFF0D2818), Color(0xFF00FF66))
+                    isShizukuAvailable -> Triple("🟡 Shizuku Running — Permission Required", Color(0xFF2D2408), Color(0xFFFFCC00))
+                    else -> Triple("⚪ Shizuku Service Not Running / Disconnected", Color(0xFF1E212D), Color(0xFF9CA3AF))
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(statusBg)
+                        .border(1.dp, statusColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = statusText,
+                        color = statusColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "With Shizuku authorized, Jarvis can tap, swipe, scroll shorts/reels, type text, and press home/back across ANY app on your device without user touch.",
+                    color = Color(0xFF9CA3AF),
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val act = MainActivity.currentActivity
+                            if (act != null) {
+                                app.shizukuManager.requestPermission(act)
+                            }
+                        },
+                        enabled = isShizukuAvailable && !hasShizukuPermission,
+                        modifier = Modifier.weight(1.2f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryColor,
+                            contentColor = Color.Black,
+                            disabledContainerColor = Color(0xFF232736),
+                            disabledContentColor = Color(0xFF6B7280)
+                        )
+                    ) {
+                        Text(
+                            text = if (hasShizukuPermission) "Authorized ✓" else "Authorize Shizuku",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            app.shizukuManager.checkShizukuState()
+                            DynamicIslandService.postAction(if (hasShizukuPermission) "Shizuku Connected" else "Checking Shizuku...")
+                        },
+                        modifier = Modifier.weight(0.9f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = primaryColor),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, primaryColor.copy(alpha = 0.5f))
+                    ) {
+                        Text("Check Status", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        // Section 7: Always-On "Hey Jarvis" Wake Word
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .applyUiStyle(currentSettings.uiDesign, primaryColor)
+                .padding(16.dp)
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "7. 🎙️ Always-On 'Hey Jarvis' Wake Word",
+                            color = primaryColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = "Hands-free voice wake & sleep across all apps & background:",
+                            color = Color(0xFF9CA3AF),
+                            fontSize = 12.sp
+                        )
+                    }
+                    Switch(
+                        checked = currentSettings.wakeWordEnabled,
+                        onCheckedChange = { enabled ->
+                            app.settingsRepository.updateSettings(currentSettings.copy(wakeWordEnabled = enabled))
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = primaryColor, checkedTrackColor = primaryColor.copy(alpha = 0.4f))
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Wake Word Status Badge
+                val wakeStatusText = if (currentSettings.wakeWordEnabled) {
+                    if (isWakeWordListening) "🟢 Standby Active — Say 'Hey Jarvis wake up'" else "🟢 Wake Word Service Running in Background"
+                } else {
+                    "⚪ Wake Word Disabled"
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (currentSettings.wakeWordEnabled) Color(0xFF0D2818) else Color(0xFF1E212D))
+                        .border(1.dp, (if (currentSettings.wakeWordEnabled) Color(0xFF00FF66) else Color(0xFF6B7280)).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = wakeStatusText,
+                        color = if (currentSettings.wakeWordEnabled) Color(0xFF00FF66) else Color(0xFF9CA3AF),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "• Say "Hey Jarvis wake up" or "Wake up": Turns ON listening mode from background or any app.\n• Say "Hey Jarvis turn off" or "Go to sleep": Turns OFF listening mode and returns Jarvis to quiet standby.",
+                    color = Color(0xFF9CA3AF),
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
             }
         }
     }

@@ -83,5 +83,9 @@ data class AppSettings(
     val dynamicIslandWidth: Int = 220,
     val dynamicIslandHeight: Int = 48,
     val dynamicIslandCornerRadius: Int = 24,
-    val dynamicIslandAnimationDurationMs: Int = 350
+    val dynamicIslandAnimationDurationMs: Int = 350,
+    // Shizuku autonomous zero-touch control
+    val shizukuAutopilotEnabled: Boolean = true,
+    // Always-on "Hey Jarvis" wake word detection (works in background & other apps)
+    val wakeWordEnabled: Boolean = true
 )

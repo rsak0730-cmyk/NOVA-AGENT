@@ -11,6 +11,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.editog.novaagent.service.DynamicIslandService
@@ -30,7 +31,24 @@ class VoiceManager(private val context: Context) {
     private val _recognizedText = MutableStateFlow("")
     val recognizedText: StateFlow<String> = _recognizedText.asStateFlow()
 
+    private val _isSpeaking = MutableStateFlow(false)
+    val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
+
     var onSpeechFinalResult: ((String) -> Unit)? = null
+
+    private fun attachUtteranceListener() {
+        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {
+                _isSpeaking.value = true
+            }
+            override fun onDone(utteranceId: String?) {
+                _isSpeaking.value = false
+            }
+            override fun onError(utteranceId: String?) {
+                _isSpeaking.value = false
+            }
+        })
+    }
 
     fun speak(text: String) {
         if (text.isBlank()) return
@@ -43,17 +61,23 @@ class VoiceManager(private val context: Context) {
                                 tts?.language = Locale.US
                                 tts?.setPitch(1.0f)
                                 tts?.setSpeechRate(1.05f)
+                                attachUtteranceListener()
+                                _isSpeaking.value = true
                                 tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "NovaAgentTTS_${System.currentTimeMillis()}")
                             } catch (e: Throwable) {
                                 Log.e("VoiceManager", "Error speaking after init", e)
+                                _isSpeaking.value = false
                             }
                         }
                     }
                 } else {
+                    attachUtteranceListener()
+                    _isSpeaking.value = true
                     tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "NovaAgentTTS_${System.currentTimeMillis()}")
                 }
             } catch (e: Throwable) {
                 Log.e("VoiceManager", "TTS error", e)
+                _isSpeaking.value = false
             }
         }
     }
@@ -63,6 +87,7 @@ class VoiceManager(private val context: Context) {
             try {
                 tts?.stop()
             } catch (e: Throwable) {}
+            _isSpeaking.value = false
         }
     }
 

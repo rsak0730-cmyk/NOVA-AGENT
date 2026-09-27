@@ -26,6 +26,9 @@
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Shizuku Privileged Control API Permission -->
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
     <!-- Package Visibility Queries for Speech Recognizer, TTS & Launcher on Android 11+ -->
     <queries>
         <intent>
@@ -38,6 +41,7 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <package android:name="moe.shizuku.privileged.api" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
@@ -56,6 +60,15 @@
         android:theme="@style/Theme.NovaAgent"
         android:usesCleartextTraffic="true"
         tools:targetApi="35">
+
+        <!-- Shizuku Content Provider for Autonomous High-Privilege Shell Operations -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <activity
             android:name=".MainActivity"

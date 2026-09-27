@@ -11,6 +11,8 @@ import com.editog.novaagent.automation.AppLauncher
 import com.editog.novaagent.automation.ContactsHelper
 import com.editog.novaagent.automation.TelephonyHelper
 import com.editog.novaagent.automation.VoiceManager
+import com.editog.novaagent.automation.ShizukuManager
+import com.editog.novaagent.automation.WakeWordManager
 import com.editog.novaagent.data.api.AgentBrainOrchestrator
 import com.editog.novaagent.data.model.*
 import com.editog.novaagent.data.repository.ApiConfigRepository
@@ -43,6 +45,8 @@ class NovaApplication : Application() {
             }
         }
     }
+    val shizukuManager: ShizukuManager by lazy { ShizukuManager(this) }
+    val wakeWordManager: WakeWordManager by lazy { WakeWordManager(this, voiceManager, settingsRepository) }
     val brainOrchestrator: AgentBrainOrchestrator by lazy { AgentBrainOrchestrator() }
 
     private val appScope by lazy { CoroutineScope(Dispatchers.Main + SupervisorJob()) }
@@ -54,6 +58,8 @@ class NovaApplication : Application() {
         setupCrashHandler()
         registerCallReceiverDynamically()
         tryStartDynamicIsland()
+        shizukuManager.init()
+        wakeWordManager.startIfEnabled()
     }
 
     private fun setupCrashHandler() {
@@ -114,12 +120,75 @@ class NovaApplication : Application() {
             DynamicIslandService.postAction("Heard: \"$trimmed\"")
             chatRepository.addMessage(ChatMessage(sender = MessageSender.USER, content = trimmed))
 
+            val rawLower = trimmed.lowercase()
+
+            // 0. WAKE UP & SLEEP (VOICE COMMAND CONTROL OF LISTENING MODE)
+            if (rawLower == "wake up" || rawLower == "turn on listening" || rawLower == "start listening" ||
+                rawLower == "wake up jarvis" || rawLower == "hey jarvis wake up" || rawLower == "jarvis wake up") {
+                val resp = "I am awake and listening, sir. What are your orders?"
+                voiceManager.speak(resp)
+                DynamicIslandService.postAction("🎙️ Jarvis Awake")
+                chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp, actionBadge = "Awake"))
+                voiceManager.startListening()
+                return
+            }
+
+            if (rawLower == "turn off" || rawLower == "go to sleep" || rawLower == "sleep" ||
+                rawLower == "stop listening" || rawLower == "turn off jarvis" || rawLower == "hey jarvis turn off" || rawLower == "jarvis turn off") {
+                val resp = "Deactivating listening mode, sir. Say 'Hey Jarvis wake up' whenever you need me."
+                voiceManager.speak(resp)
+                DynamicIslandService.postAction("💤 Jarvis Standby")
+                chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = resp, actionBadge = "Standby"))
+                voiceManager.stopListening()
+                return
+            }
+
             val lower = trimmed.lowercase()
                 .removePrefix("hey jarvis").removePrefix("jarvis")
                 .removePrefix("hey nova").removePrefix("nova")
                 .removePrefix("can you please").removePrefix("could you please")
                 .removePrefix("can you").removePrefix("could you")
                 .removePrefix("please").trim()
+
+            // SYSTEM NAVIGATION KEYS (HOME / BACK / RECENTS)
+            if (lower == "go back" || lower == "back") {
+                val handled = if (shizukuManager.isAvailableAndAuthorized()) {
+                    shizukuManager.pressBack()
+                } else {
+                    AgentAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK) ?: false
+                }
+                if (handled) {
+                    voiceManager.speak("Went back.")
+                    DynamicIslandService.postAction("Key: Back")
+                }
+                return
+            }
+
+            if (lower == "go home" || lower == "home screen" || lower == "home") {
+                val handled = if (shizukuManager.isAvailableAndAuthorized()) {
+                    shizukuManager.pressHome()
+                } else {
+                    AgentAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME) ?: false
+                }
+                if (handled) {
+                    voiceManager.speak("Went to home screen.")
+                    DynamicIslandService.postAction("Key: Home")
+                }
+                return
+            }
+
+            if (lower == "recent apps" || lower == "recents" || lower == "switch app" || lower == "app switcher") {
+                val handled = if (shizukuManager.isAvailableAndAuthorized()) {
+                    shizukuManager.pressRecents()
+                } else {
+                    AgentAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS) ?: false
+                }
+                if (handled) {
+                    voiceManager.speak("Opened recent apps.")
+                    DynamicIslandService.postAction("Key: Recents")
+                }
+                return
+            }
 
             // 1. GREETINGS & JARVIS CONVERSATIONAL ESSENTIALS
             if (lower == "hello" || lower == "hi" || lower == "hey" || lower == "who are you" ||
@@ -151,41 +220,50 @@ class NovaApplication : Application() {
             // 3. FAST MEDIA SCROLLING
             if (lower.contains("scroll down") || lower.contains("next reel") || lower.contains("next short") ||
                 lower.contains("next video") || lower == "next" || lower == "scroll next") {
-                val service = AgentAccessibilityService.instance
-                val scrolled = service?.scrollMedia("up") ?: false
+                val scrolled = if (shizukuManager.isAvailableAndAuthorized()) {
+                    shizukuManager.scrollDown()
+                } else {
+                    AgentAccessibilityService.instance?.scrollMedia("up") ?: false
+                }
                 if (scrolled) {
                     voiceManager.speak("Scrolling to next video.")
                     DynamicIslandService.postAction("Scrolled Next")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Scrolled to next media item.", actionBadge = "Scrolled Down"))
                 } else {
-                    voiceManager.speak("Accessibility permission is needed to scroll the screen.")
+                    voiceManager.speak("Accessibility or Shizuku permission needed to scroll the screen.")
                 }
                 return
             }
 
             if (lower.contains("scroll up") || lower.contains("previous reel") || lower.contains("previous video") || lower == "previous") {
-                val service = AgentAccessibilityService.instance
-                val scrolled = service?.scrollMedia("down") ?: false
+                val scrolled = if (shizukuManager.isAvailableAndAuthorized()) {
+                    shizukuManager.scrollUp()
+                } else {
+                    AgentAccessibilityService.instance?.scrollMedia("down") ?: false
+                }
                 if (scrolled) {
                     voiceManager.speak("Scrolling to previous video.")
                     DynamicIslandService.postAction("Scrolled Previous")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Scrolled to previous media item.", actionBadge = "Scrolled Up"))
                 } else {
-                    voiceManager.speak("Accessibility permission is needed to scroll the screen.")
+                    voiceManager.speak("Accessibility or Shizuku permission needed to scroll the screen.")
                 }
                 return
             }
 
             // 4. PLAY / PAUSE
             if (lower == "play" || lower == "pause" || lower == "resume" || lower.contains("play video") || lower.contains("pause video")) {
-                val service = AgentAccessibilityService.instance
-                val toggled = service?.togglePlayPause() ?: false
+                val toggled = if (shizukuManager.isAvailableAndAuthorized()) {
+                    shizukuManager.pressPlayPause()
+                } else {
+                    AgentAccessibilityService.instance?.togglePlayPause() ?: false
+                }
                 if (toggled) {
                     voiceManager.speak("Toggled playback.")
                     DynamicIslandService.postAction("Play/Pause")
                     chatRepository.addMessage(ChatMessage(sender = MessageSender.AGENT, content = "Toggled video playback.", actionBadge = "Play/Pause"))
                 } else {
-                    voiceManager.speak("Accessibility needed to tap video controls.")
+                    voiceManager.speak("Accessibility or Shizuku needed to tap video controls.")
                 }
                 return
             }
@@ -226,8 +304,12 @@ class NovaApplication : Application() {
             // 6. FAST CLICK / TAP ON ACTIVE SCREEN
             if (lower.startsWith("click ") || lower.startsWith("tap ") || lower.startsWith("press ")) {
                 val targetText = lower.removePrefix("click ").removePrefix("tap ").removePrefix("press ").trim()
-                val service = AgentAccessibilityService.instance
-                val clicked = service?.clickElement(targetText) ?: false
+                val clicked = if (shizukuManager.isAvailableAndAuthorized()) {
+                    shizukuManager.clickElementByTextOrDescription(targetText) ||
+                    (AgentAccessibilityService.instance?.clickElement(targetText) ?: false)
+                } else {
+                    AgentAccessibilityService.instance?.clickElement(targetText) ?: false
+                }
                 if (clicked) {
                     val resp = "Clicked $targetText."
                     voiceManager.speak(resp)
@@ -265,8 +347,12 @@ class NovaApplication : Application() {
             // 8. TYPING INTO FOCUSED INPUT
             if (lower.startsWith("type ") || lower.startsWith("search for ") || lower.startsWith("search ")) {
                 val textToType = lower.removePrefix("type ").removePrefix("search for ").removePrefix("search ").trim()
-                val service = AgentAccessibilityService.instance
-                val typed = service?.typeTextIntoInput("", textToType) ?: false
+                val typed = if (shizukuManager.isAvailableAndAuthorized()) {
+                    shizukuManager.typeText(textToType) ||
+                    (AgentAccessibilityService.instance?.typeTextIntoInput("", textToType) ?: false)
+                } else {
+                    AgentAccessibilityService.instance?.typeTextIntoInput("", textToType) ?: false
+                }
                 if (typed) {
                     voiceManager.speak("Typed: $textToType")
                     DynamicIslandService.postAction("Typed: $textToType")
@@ -305,15 +391,29 @@ class NovaApplication : Application() {
                                 badge = if (opened) "Opened ${cmd.app_name}" else "App not found"
                             }
                             is AgentCommand.Scroll -> {
-                                val scrolled = AgentAccessibilityService.instance?.scrollMedia(cmd.direction) ?: false
-                                badge = if (scrolled) "Scrolled ${cmd.direction.uppercase()}" else "Accessibility required"
+                                val scrolled = if (shizukuManager.isAvailableAndAuthorized()) {
+                                    if (cmd.direction.lowercase() == "down") shizukuManager.scrollUp() else shizukuManager.scrollDown()
+                                } else {
+                                    AgentAccessibilityService.instance?.scrollMedia(cmd.direction) ?: false
+                                }
+                                badge = if (scrolled) "Scrolled ${cmd.direction.uppercase()}" else "Accessibility or Shizuku required"
                             }
                             is AgentCommand.Click -> {
-                                val clicked = AgentAccessibilityService.instance?.clickElement(cmd.target_text) ?: false
+                                val clicked = if (shizukuManager.isAvailableAndAuthorized()) {
+                                    shizukuManager.clickElementByTextOrDescription(cmd.target_text) ||
+                                    (AgentAccessibilityService.instance?.clickElement(cmd.target_text) ?: false)
+                                } else {
+                                    AgentAccessibilityService.instance?.clickElement(cmd.target_text) ?: false
+                                }
                                 badge = if (clicked) "Clicked ${cmd.target_text}" else "Element not found"
                             }
                             is AgentCommand.TypeText -> {
-                                val typed = AgentAccessibilityService.instance?.typeTextIntoInput(cmd.target, cmd.text) ?: false
+                                val typed = if (shizukuManager.isAvailableAndAuthorized()) {
+                                    shizukuManager.typeText(cmd.text) ||
+                                    (AgentAccessibilityService.instance?.typeTextIntoInput(cmd.target, cmd.text) ?: false)
+                                } else {
+                                    AgentAccessibilityService.instance?.typeTextIntoInput(cmd.target, cmd.text) ?: false
+                                }
                                 badge = if (typed) "Typed \"${cmd.text}\"" else "No input field focused"
                             }
                             is AgentCommand.MakeCall -> {
