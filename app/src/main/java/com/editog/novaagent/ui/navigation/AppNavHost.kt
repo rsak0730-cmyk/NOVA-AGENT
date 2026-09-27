@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.editog.novaagent.NovaApplication
+import com.editog.novaagent.R
 import com.editog.novaagent.data.model.AppSettings
 import com.editog.novaagent.ui.screens.ApiSetupScreen
 import com.editog.novaagent.ui.screens.ChatScreen
@@ -29,46 +30,119 @@ fun AppNavHost(
     val currentRoute = navBackStackEntry?.destination?.route ?: "chat"
     val primaryColor = Color(settings.themeColor.primaryHex)
 
+    fun navigateTo(route: String) {
+        if (currentRoute != route) {
+            navController.navigate(route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar(
                 containerColor = Color(0xFF0C0E16),
                 contentColor = Color.White
             ) {
-                BottomNavItem.items.forEach { item ->
-                    val isSelected = currentRoute == item.route
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                painter = painterResource(item.iconResId),
-                                contentDescription = item.title,
-                                tint = if (isSelected) primaryColor else Color(0xFF6B7280),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = item.title,
-                                color = if (isSelected) primaryColor else Color(0xFF6B7280)
-                            )
-                        },
-                        selected = isSelected,
-                        onClick = {
-                            if (currentRoute != item.route) {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = primaryColor.copy(alpha = 0.15f)
+                // Tab 1: Chat
+                val isChat = currentRoute == "chat"
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_nav_chat),
+                            contentDescription = "Chat",
+                            tint = if (isChat) primaryColor else Color(0xFF6B7280),
+                            modifier = Modifier.size(24.dp)
                         )
+                    },
+                    label = {
+                        Text(
+                            text = "Chat",
+                            color = if (isChat) primaryColor else Color(0xFF6B7280)
+                        )
+                    },
+                    selected = isChat,
+                    onClick = { navigateTo("chat") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = primaryColor.copy(alpha = 0.15f)
                     )
-                }
+                )
+
+                // Tab 2: API Setup
+                val isApi = currentRoute == "api_setup"
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_nav_key),
+                            contentDescription = "API Setup",
+                            tint = if (isApi) primaryColor else Color(0xFF6B7280),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = "API Setup",
+                            color = if (isApi) primaryColor else Color(0xFF6B7280)
+                        )
+                    },
+                    selected = isApi,
+                    onClick = { navigateTo("api_setup") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = primaryColor.copy(alpha = 0.15f)
+                    )
+                )
+
+                // Tab 3: Voicemail
+                val isVoicemail = currentRoute == "voicemail"
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_voicemail),
+                            contentDescription = "Voicemail",
+                            tint = if (isVoicemail) primaryColor else Color(0xFF6B7280),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = "Voicemail",
+                            color = if (isVoicemail) primaryColor else Color(0xFF6B7280)
+                        )
+                    },
+                    selected = isVoicemail,
+                    onClick = { navigateTo("voicemail") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = primaryColor.copy(alpha = 0.15f)
+                    )
+                )
+
+                // Tab 4: Settings
+                val isSettings = currentRoute == "settings"
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_nav_settings),
+                            contentDescription = "Settings",
+                            tint = if (isSettings) primaryColor else Color(0xFF6B7280),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = "Settings",
+                            color = if (isSettings) primaryColor else Color(0xFF6B7280)
+                        )
+                    },
+                    selected = isSettings,
+                    onClick = { navigateTo("settings") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = primaryColor.copy(alpha = 0.15f)
+                    )
+                )
             }
         },
         containerColor = Color(0xFF090A0F)
